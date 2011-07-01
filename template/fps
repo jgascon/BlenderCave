@@ -1,0 +1,50 @@
+from GameLogic import *
+from Rasterizer import *
+Cont = getCurrentController()
+Own = Cont.getOwner()
+Sens = Cont.getSensors()
+Sensor = Sens[0]
+
+Height = getWindowHeight()/2
+Width = getWindowWidth()/2
+
+Xpos = Sensor.getXPosition()
+Ypos = Sensor.getYPosition()
+RightMove = Cont.getActuator("Right")
+LeftMove = Cont.getActuator("Left")
+UpMove = Cont.getActuator("Up")
+DownMove = Cont.getActuator("Down")
+
+
+if (Xpos > Width):
+	# Move right
+	XDiff = Xpos - Width
+	RightMove.setDRot(0,(XDiff /Own.move),0,1)
+	addActiveActuator(RightMove,1)	
+	
+if (Xpos < Width):
+	# Move left
+	XDiff = Xpos - Width
+	LeftMove.setDRot(0,(XDiff/Own.move),0,1)
+	addActiveActuator(LeftMove,1)
+	
+if (Ypos < Height):
+	# Move up
+	YDiff = Ypos - Height	
+	UpMove.setDRot((YDiff/Own.move),0,0,1)
+	addActiveActuator(UpMove,1)
+	
+if (Ypos > Height):
+	# Move down
+	YDiff = Ypos - Height
+	DownMove.setDRot((YDiff/Own.move),0,0,1)
+	addActiveActuator(DownMove,1)
+
+# Shut off all actuator movements
+addActiveActuator(LeftMove,0)
+addActiveActuator(DownMove,0)
+addActiveActuator(RightMove,0)
+addActiveActuator(UpMove,0)
+
+# Set the mouse to the center of the game screen
+setMousePosition(Width,Height)
