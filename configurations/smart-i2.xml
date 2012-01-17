@@ -1,0 +1,46 @@
+<virtualEnvironment name="SMARTI2" synchroPort="2731" synchroAddress="225.0.0.37">
+  <user ID='0' name='user A' eye_separation="0.00">
+    <default_position>0.0, 0.0, 0.0</default_position>
+  </user>
+  <user>
+    <default_position>0.0, 0.0, 0.0</default_position>
+  </user>
+
+	<!--
+  <computer name="master">
+    <screen name="console">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
+      <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
+    </screen>
+  </computer>
+	-->
+
+  <computer name="djobi">
+    <screen name="left-left"> <!-- left screen left eye -->
+      <graphic_buffer name="alone" user="0" eye="left"/>
+      <corner name="topRightCorner">0.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.4142136, 1.0, 0.4142136</corner>
+      <corner name="bottomRightCorner">0.0, -1.0, -1.0</corner>
+    </screen>
+    <screen name="left-right"> <!-- left screen right eye -->
+      <graphic_buffer name="alone" user="0" eye="right"/>
+      <corner name="topRightCorner">0.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.4142136, 1.0, 0.4142136</corner>
+      <corner name="bottomRightCorner">0.0, -1.0, -1.0</corner>
+    </screen>
+    <screen name="right-left"> <!-- left screen left eye -->
+      <graphic_buffer name="alone" user="0" eye="left"/>
+      <corner name="topRightCorner">1.4142136, 1.0, 0.4142136</corner>
+      <corner name="topLeftCorner">0.0, 1.0, -1.0</corner>
+      <corner name="bottomRightCorner">1.4142136, -1.0, 0.4142136</corner>
+    </screen>
+    <screen name="right-right"> <!-- left screen right eye -->
+      <graphic_buffer name="alone" user="0" eye="right"/>
+      <corner name="topRightCorner">1.4142136, 1.0, 0.4142136</corner>
+      <corner name="topLeftCorner">0.0, 1.0, -1.0</corner>
+      <corner name="bottomRightCorner">1.4142136, -1.0, 0.4142136</corner>
+    </screen>
+  </computer>
+</virtualEnvironment>

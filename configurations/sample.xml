@@ -1,0 +1,72 @@
+<virtualEnvironment name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
+  <!-- We are able to render as many as usefull users for a given Virtual Environment. Each use must be represented by an ID. It also may have a name that is use to be display in warnings and errors -->
+  <user ID='0' name='user A' eye_separation='0.06'>
+
+    <!-- Each user must have a default position. ie.: a position used when there is no tracking available. By default (0.0, 0.0, 0.0) means that the user is a the camera position. -->
+    <default_position>0.0, 0.0, 0.0</default_position>
+  </user>
+
+  <user ID='1'>
+    <default_position>0.0, 0.0, 0.0</default_position>
+  </user>
+
+  <!-- Each "computer" section describe one computer working for the CAVE rendering
+  The first computer/screen is the master one. To set it to the console should be a good idea ... Computer "name" is the name given by "hostname" Windows or Linux command
+  '*' means whatever computer. So, it works but you should set it to the correct name of the computer -->
+  <computer name="*">
+
+    <!-- Each screen represent an instance of blender that is running on a given computer. For example, when a single computer render several screens for avirtual environment, one instance of blender must be run for each screen. The screen "name" is use to describe one instance of blenderCAVE that is running on a given computer -->
+    <screen name="console">
+
+      <!-- Graphic buffer represents OpenGL current buffer. Only usefull in case of Quad-Buffer stereo rendering
+      The "name" must be :
+      * 'alone' : for no quadbuffer stereo buffer
+      * 'left'  : for left buffer
+      * 'right' : for right buffer
+      The 'user' correspond to the id given above to the user (see section "user")
+      The 'eye' must be 'middle' (no stereo), 'left' or 'right'
+      -->
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="right" user="0" eye="right"/>
+      <graphic_buffer name="left" user="0" eye="left"/>
+
+      <!-- In case of blenderplayer full screen, that may be usefull to reduce the viewport
+      Coordinates : x1, y1, x2, y2 -->
+      <viewport>350, 0, 1250, 900</viewport>
+
+      <!-- Each corner represents the 3d coordinates of the screen in real world. Coordinates are considered in the reference frame of the camera. 'topRightCorner', 'topLeftCorner' and 'bottomRightCorner' must be specify. 'bottomLeftCorner' is automatically computed by considering that the screen must be rectangular -->
+      <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
+      <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
+    </screen>
+
+    <screen name="other console">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <corner name="topRightCorner">0.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.4142136, 1.0, 0.4142136</corner>
+      <corner name="bottomRightCorner">0.0, -1.0, -1.0</corner>
+    </screen>
+
+  </computer>
+
+  <computer name="other computer">
+
+    <screen name="first screen">
+      <graphic_buffer name="left" user="0" eye="left"/>
+      <graphic_buffer name="right" user="0" eye="right"/>
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <corner name="topRightCorner">2.395,0.0,-1.35</corner>
+      <corner name="topLeftCorner">-2.395,0.0,-1.35</corner>
+      <corner name="bottomRightCorner">2.395,0.0,1.35</corner>
+    </screen>
+
+    <screen name="second">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <corner name="topRightCorner">-2.395,2.7,-1.35</corner>
+      <corner name="topLeftCorner">-2.395,2.7,1.35</corner>
+      <corner name="bottomRightCorner">-2.395,0.0,-1.35</corner>
+    </screen>
+
+  </computer>
+
+</virtualEnvironment>

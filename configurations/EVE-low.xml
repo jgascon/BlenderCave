@@ -1,0 +1,62 @@
+<virtualEnvironment name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
+  <user ID='0' name='user A'>
+    <default_position>1.6, 0.0, 0.0</default_position>
+  </user>
+
+  <computer name="v-gfx-a-6">
+    <screen name="console">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
+      <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
+    </screen>
+
+  </computer>
+
+  <computer name="v-gfx-a-1">
+    <screen name="left">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="right" user="0" eye="right"/>
+      <graphic_buffer name="left" user="0" eye="left"/>
+      <viewport>420, 0, 1500, 1080</viewport>
+      <corner name="topRightCorner">-2.4, 2.7, -1.35</corner>
+      <corner name="topLeftCorner">-2.4, 2.7, 1.35</corner>
+      <corner name="bottomRightCorner">-2.4, 0, -1.35</corner>
+    </screen>
+  </computer>
+
+  <computer name="v-gfx-a-2">
+    <screen name="right">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="right" user="0" eye="right"/>
+      <graphic_buffer name="left" user="0" eye="left"/>
+      <viewport>420, 0, 1500, 1080</viewport>
+      <corner name="topRightCorner">2.4, 2.7, 1.35</corner>
+      <corner name="topLeftCorner">2.4, 2.7, -1.35</corner>
+      <corner name="bottomRightCorner">2.4, 0, 1.35</corner>
+    </screen>
+  </computer>
+
+  <computer name="v-gfx-a-3">
+    <screen name="front">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="right" user="0" eye="right"/>
+      <graphic_buffer name="left" user="0" eye="left"/>
+      <corner name="topRightCorner">2.4, 2.7, -1.35</corner>
+      <corner name="topLeftCorner">-2.4, 2.7, -1.35</corner>
+      <corner name="bottomRightCorner">2.4, 0, -1.35</corner>
+    </screen>
+  </computer>
+
+  <computer name="v-gfx-a-5">
+    <screen name="floor">
+      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="right" user="0" eye="right"/>
+      <graphic_buffer name="left" user="0" eye="left"/>
+      <corner name="topRightCorner">2.4, 0, -1.35</corner>
+      <corner name="topLeftCorner">-2.4, 0, -1.35</corner>
+      <corner name="bottomRightCorner">2.4, 0, 1.35</corner>
+    </screen>
+  </computer>
+
+</virtualEnvironment>
