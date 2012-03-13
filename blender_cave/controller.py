@@ -38,6 +38,7 @@ import select
 import time
 import struct
 import sys
+import logging
 from . import exceptions
 
 class Controller:
@@ -62,17 +63,17 @@ class Controller:
                         data = client.recv(1024)
                         clientID, = struct.unpack_from('>i', data)
                         self._clients[client] = {'id':clientID, 'socket': client, 'address' : address}
-                        print("Connection of a client [", clientID, "] : ",address)
+                        logging.debug("Connection of a client [", clientID, "] : " + str(address))
                     else:
                         data = peer.recv(1024)
                         if data:
-                            print("Data from client : ", data)
+                            logging.debug("Data from client : " + str(data))
                         else:
                             if peer in self._clients:
-                                print("Removing : ", self._clients[peer]['address'])
+                                logging.debug("Removing : " + str(self._clients[peer]['address']))
                                 del(self._clients[peer])
                             else:
-                                print("Closing connection !")
+                                logging.debug("Closing connection !")
                             self._selectEntries.remove(peer)
                             peer.close()
             self._selectEntries.remove(server)
@@ -86,9 +87,9 @@ class Controller:
                     self._client.connect((master_computer, port))
                     connected = True
                 except socket.error as error:
-                    print("waiting for master node !")
+                    logging.debug("waiting for master node !")
                     time.sleep(1)
-            print("Connected !")
+            logging.debug("Connected !")
             data = struct.pack('>i', self._currentScreenID)
             self._client.send(data)
 

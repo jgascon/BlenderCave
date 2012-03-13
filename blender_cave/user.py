@@ -37,20 +37,13 @@ import mathutils
 from . import parser
 from . import synchronizer
 from . import packer
-
-class UserException (BaseException):
-    def __init__(self, reason):
-        self._reason = reason
-        return
-
-    def __str__(self):
-        return self._reason
+from . import exceptions
 
 class User:
 
     def __init__(self, node):
-        if (node.hasAttributes() == False) or ('ID' in node.attributes == False):
-            raise UserException("User don't have a valid ID !");
+        if (node.hasAttributes() == False) or (('ID' in node.attributes) == False):
+            raise exceptions.User("User don't have a valid ID !");
         self._id = int(node.attributes['ID'].value)
         if 'name' in node.attributes:
             self._name = node.attributes['name'].value
@@ -67,13 +60,16 @@ class User:
             child = child.nextSibling
 
         if hasattr(self, '_default_position') == False:
-            raise UserException("No default position for the user !");
+            raise exceptions.user("No default position for the user !");
 
         synchronizer.addObjectToSynchronize(self)
         return
 
     def getID(self):
         return self._id
+        
+    def getName(self):
+        return self._name
         
     def getPosition(self):
         if hasattr(self, '_position'):

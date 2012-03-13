@@ -39,10 +39,12 @@ import string
 import socket
 import bge
 import os
+import logging
 from . import geometry
 from . import synchronizer
 from . import user
 from . import exceptions
+from . import vrpn_blender
 
 """ @package configure
 Must be import only once : for the first start of the application
@@ -138,8 +140,14 @@ def userConfiguration(node):
         if ('users' in globals()) == False:
             globals()['users'] = {}
         globals()['users'][currentUser.getID()] = currentUser
-    except user.UserException as inst:
+    except exceptions.User as inst:
+        print(inst)
         return
+
+def vrpnConfiguration(node):
+    if node.nodeName != 'vrpn':
+        return
+    vrpn_blender.configure(node)
 
 def mainConfiguration(node):
     global synchroPort
@@ -161,6 +169,7 @@ def mainConfiguration(node):
     while child:
         userConfiguration(child)
         computerConfiguration(child)
+        vrpnConfiguration(child)
         child = child.nextSibling
 
 bge.logic.alreadyConfigure = True
@@ -196,14 +205,14 @@ if ('users' in locals()) == False:
 
 bge.logic.geometry = currentGeometry
 
-print(" Configuration file : " + xmlFileName)
+logging.debug(" Configuration file : " + xmlFileName)
 if 'screenNameToLoad' in locals():
-    print("  Screen name : " + screenNameToLoad)
+    logging.debug("  Screen name : " + screenNameToLoad)
 
 if (bge.logic.geometry.isMaster()):
-    print("  I'm the rendering master !")
+    logging.debug("  I'm the rendering master !")
 else:
-    print("  I'm one of the the rendering slave (master is : " + master_computer + ") !")
+    logging.debug("  I'm one of the the rendering slave (master is : " + master_computer + ") !")
 
 nbScreens = nbScreens + 1
 

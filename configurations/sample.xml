@@ -69,4 +69,41 @@
 
   </computer>
 
+  <!--
+      For VRPN management, blender_cave will try to load the module with the same nama than the current .blend file prefixed by vrpn_ (ie : bpcem_playground_CAVE.blend => vrpn_bpcem_playground_CAVE.py)
+      See samples for its use
+  -->
+  <vrpn>
+    <tracker name="Tracker0" host="localhost">
+
+      <transformation>
+	<!--
+	    Here goes transformation for all sensors
+	-->
+	<translate x='-0.10592269897460938' y='-0.59547358751297' z='1.6200547218322754' />
+	<!--
+	    But can also be : 
+	    <scale factor='5.0' x='1.0' y='0.0' z='0.0' />
+	    Where factor is the factor. x, y, z represents the axis of the scale (can be omitted)
+
+            <rotare angle='3.1415926' x='1.0' y='0.0' z='0.0' />
+	    Where angle is the angle and x, y, z represents the axis of the rotation
+
+            You can add as many lines as necessary
+	-->
+      </transformation>
+
+
+      <sensor id="0" processor_method='user_position' data='user A'> 
+	<!-- The "user_position" method is inherited from processor.Processor and manage the user position. The user name is the data provided to the method -->
+	<transformation>
+	  <!-- Same thing for tracker, but for this sensor only -->
+	</transformation>
+      </sensor>
+      <sensor id="1" processor_method='tracker_1'/>
+    </tracker>
+    <tracker name="Tracker1" host="localhost" />
+    <Analog name="Analog1" host="localhost" />
+  </vrpn>
+
 </virtualEnvironment>

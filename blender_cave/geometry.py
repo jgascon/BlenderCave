@@ -276,8 +276,11 @@ class VEC:
         if 'main' in self._buffers:
             self._updateMatrixForBuffer('main', camera, 'projection_matrix', 'stereo_position_matrix', depth)
 
-    def getNumberUser(self):
-        return len(self._users)
+    def getUserIDByName(self, userName):
+        for id, user in self._users.items():
+            if userName == user.getName():
+                return id
+        return False
 
     def getUserPosition(self, userID):
         if userID in self._users:
@@ -286,6 +289,3 @@ class VEC:
     def setUserPosition(self, userID, position):
         if userID in self._users:
             self._users[userID].setPosition(position)
-
-    def getUsers(self):
-        return self._users

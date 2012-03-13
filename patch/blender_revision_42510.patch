@@ -1,0 +1,1009 @@
+Index: source/gameengine/VideoTexture/ImageRender.cpp
+===================================================================
+--- source/gameengine/VideoTexture/ImageRender.cpp	(revision 42512)
++++ source/gameengine/VideoTexture/ImageRender.cpp	(working copy)
+@@ -262,8 +262,9 @@
+ 	MT_Transform camtrans(m_camera->GetWorldToCamera());
+ 	MT_Matrix4x4 viewmat(camtrans);
+ 	
+-	m_rasterizer->SetViewMatrix(viewmat, m_camera->NodeGetWorldOrientation(), m_camera->NodeGetWorldPosition(), m_camera->GetCameraData()->m_perspective);
+ 	m_camera->SetModelviewMatrix(viewmat);
++	m_rasterizer->SetModelviewMatrix(m_camera->GetStereoMatrix(m_rasterizer->GetEyeSeparation()) * viewmat);
++	m_rasterizer->SetCameraPosition(m_camera->NodeGetWorldPosition());
+ 	// restore the stereo mode now that the matrix is computed
+ 	m_rasterizer->SetStereoMode(stereomode);
+ 
+Index: source/gameengine/Ketsji/KX_Scene.cpp
+===================================================================
+--- source/gameengine/Ketsji/KX_Scene.cpp	(revision 42512)
++++ source/gameengine/Ketsji/KX_Scene.cpp	(working copy)
+@@ -228,6 +228,7 @@
+ 	
+ #ifdef WITH_PYTHON
+ 	m_attr_dict = PyDict_New(); /* new ref */
++	m_draw_call_pre_render = NULL;
+ 	m_draw_call_pre = NULL;
+ 	m_draw_call_post = NULL;
+ #endif
+@@ -292,6 +293,7 @@
+ 	Py_CLEAR(m_attr_dict);
+ 
+ 	/* these may be NULL but the macro checks */
++	Py_CLEAR(m_draw_call_pre_render);
+ 	Py_CLEAR(m_draw_call_pre);
+ 	Py_CLEAR(m_draw_call_post);
+ #endif
+@@ -2180,6 +2182,16 @@
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
++PyObject* KX_Scene::pyattr_get_drawing_callback_pre_render(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Scene* self = static_cast<KX_Scene*>(self_v);
++
++	if(self->m_draw_call_pre_render==NULL)
++		self->m_draw_call_pre_render= PyList_New(0);
++	Py_INCREF(self->m_draw_call_pre_render);
++	return self->m_draw_call_pre_render;
++}
++
+ PyObject* KX_Scene::pyattr_get_drawing_callback_pre(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
+ {
+ 	KX_Scene* self = static_cast<KX_Scene*>(self_v);
+@@ -2200,6 +2212,23 @@
+ 	return self->m_draw_call_post;
+ }
+ 
++int KX_Scene::pyattr_set_drawing_callback_pre_render(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Scene* self = static_cast<KX_Scene*>(self_v);
++
++	if (!PyList_CheckExact(value))
++	{
++		PyErr_SetString(PyExc_ValueError, "Expected a list");
++		return PY_SET_ATTR_FAIL;
++	}
++	Py_XDECREF(self->m_draw_call_pre_render);
++
++	Py_INCREF(value);
++	self->m_draw_call_pre_render = value;
++
++	return PY_SET_ATTR_SUCCESS;
++}
++
+ int KX_Scene::pyattr_set_drawing_callback_pre(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
+ {
+ 	KX_Scene* self = static_cast<KX_Scene*>(self_v);
+@@ -2234,6 +2263,52 @@
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
++PyObject* KX_Scene::pyattr_get_frame_type(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Scene* self = static_cast<KX_Scene*>(self_v);
++
++	const RAS_FrameSettings &frameSettings = self->GetFramingType();
++	switch (frameSettings.FrameType()) {
++	case RAS_FrameSettings::e_frame_scale:
++	  return PyUnicode_From_STR_String("scale");
++	case RAS_FrameSettings::e_frame_extend:
++	  return PyUnicode_From_STR_String("extend");
++	case RAS_FrameSettings::e_frame_bars:
++	  return PyUnicode_From_STR_String("bars");
++	}
++	return PyUnicode_From_STR_String("unknown");
++}
++
++
++int KX_Scene::pyattr_set_frame_type(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Scene* self = static_cast<KX_Scene*>(self_v);
++
++	const char *str_type= _PyUnicode_AsString(value);
++	if (str_type == NULL) {
++	        PyErr_SetString(PyExc_AttributeError, "scene.frame_type = [scale | extend | bars]: KX_Scene, expected frame_type value");
++		return PY_SET_ATTR_FAIL;
++	}
++
++	RAS_FrameSettings::RAS_FrameType type;
++
++	if (strcmp(str_type, "scale") == 0) {
++	  type = RAS_FrameSettings::e_frame_scale;
++	} else if (strcmp(str_type, "extend") == 0) {
++	  type = RAS_FrameSettings::e_frame_extend;
++	} else if (strcmp(str_type, "bars") == 0) {
++	  type = RAS_FrameSettings::e_frame_bars;
++	} else {
++	        PyErr_SetString(PyExc_AttributeError, "scene.frame_type = [scale | extend | bars]: KX_Scene, expected frame_type value");
++		return PY_SET_ATTR_FAIL;
++	}
++
++	self->m_frame_settings.SetFrameType(type);
++
++	return PY_SET_ATTR_SUCCESS;
++}
++
++
+ PyAttributeDef KX_Scene::Attributes[] = {
+ 	KX_PYATTRIBUTE_RO_FUNCTION("name",				KX_Scene, pyattr_get_name),
+ 	KX_PYATTRIBUTE_RO_FUNCTION("objects",			KX_Scene, pyattr_get_objects),
+@@ -2242,8 +2317,10 @@
+ 	KX_PYATTRIBUTE_RO_FUNCTION("cameras",			KX_Scene, pyattr_get_cameras),
+ 	KX_PYATTRIBUTE_RO_FUNCTION("lights",			KX_Scene, pyattr_get_lights),
+ 	KX_PYATTRIBUTE_RW_FUNCTION("active_camera",		KX_Scene, pyattr_get_active_camera, pyattr_set_active_camera),
++	KX_PYATTRIBUTE_RW_FUNCTION("pre_render",		KX_Scene, pyattr_get_drawing_callback_pre_render, pyattr_set_drawing_callback_pre_render),
+ 	KX_PYATTRIBUTE_RW_FUNCTION("pre_draw",			KX_Scene, pyattr_get_drawing_callback_pre, pyattr_set_drawing_callback_pre),
+ 	KX_PYATTRIBUTE_RW_FUNCTION("post_draw",			KX_Scene, pyattr_get_drawing_callback_post, pyattr_set_drawing_callback_post),
++	KX_PYATTRIBUTE_RW_FUNCTION("frame_type",		KX_Scene, pyattr_get_frame_type, pyattr_set_frame_type),
+ 	KX_PYATTRIBUTE_BOOL_RO("suspended",				KX_Scene, m_suspend),
+ 	KX_PYATTRIBUTE_BOOL_RO("activity_culling",		KX_Scene, m_activity_culling),
+ 	KX_PYATTRIBUTE_FLOAT_RW("activity_culling_radius", 0.5f, FLT_MAX, KX_Scene, m_activity_box_radius),
+Index: source/gameengine/Ketsji/KX_KetsjiEngine.cpp
+===================================================================
+--- source/gameengine/Ketsji/KX_KetsjiEngine.cpp	(revision 42512)
++++ source/gameengine/Ketsji/KX_KetsjiEngine.cpp	(working copy)
+@@ -860,7 +860,14 @@
+ 	// for each scene, call the proceed functions
+ 	{
+ 		KX_Scene* scene = *sceneit;
++
++#ifdef WITH_PYTHON
++		// Run any pre-drawing python callbacks
++		scene->RunDrawingCallbacks(scene->GetPreRenderCB());
++#endif
++
+ 		KX_Camera* cam = scene->GetActiveCamera();
++
+ 		// pass the scene's worldsettings to the rasterizer
+ 		SetWorldSettings(scene->GetWorldInfo());
+ 
+@@ -1201,6 +1208,18 @@
+ 	
+ 	if (!cam)
+ 		return;
++
++	if (m_rasterizer->Stereo()) {
++	  if (m_rasterizer->GetEye() == RAS_IRasterizer::RAS_STEREO_LEFTEYE) {
++	    cam->SetRenderingMatricesEye(LEFT_EYE);
++	  } else {
++	    cam->SetRenderingMatricesEye(RIGHT_EYE);
++	  }
++	} else {
++	  cam->SetRenderingMatricesEye(0);
++	}
++
++
+ 	GetSceneViewport(scene, cam, area, viewport);
+ 
+ 	// store the computed viewport in the scene
+@@ -1296,8 +1315,9 @@
+ 	MT_Transform camtrans(cam->GetWorldToCamera());
+ 	MT_Matrix4x4 viewmat(camtrans);
+ 	
+-	m_rasterizer->SetViewMatrix(viewmat, cam->NodeGetWorldOrientation(), cam->NodeGetWorldPosition(), cam->GetCameraData()->m_perspective);
+ 	cam->SetModelviewMatrix(viewmat);
++	m_rasterizer->SetModelviewMatrix(cam->GetStereoMatrix(m_rasterizer->GetEyeSeparation()) * viewmat);
++	m_rasterizer->SetCameraPosition(cam->NodeGetWorldPosition());
+ 
+ 	// The following actually reschedules all vertices to be
+ 	// redrawn. There is a cache between the actual rescheduling
+Index: source/gameengine/Ketsji/KX_Dome.cpp
+===================================================================
+--- source/gameengine/Ketsji/KX_Dome.cpp	(revision 42512)
++++ source/gameengine/Ketsji/KX_Dome.cpp	(working copy)
+@@ -1598,8 +1598,10 @@
+ 
+ 	MT_Transform camtrans(cam->GetWorldToCamera());
+ 	MT_Matrix4x4 viewmat(camtrans);
+-	m_rasterizer->SetViewMatrix(viewmat, cam->NodeGetWorldOrientation(), cam->NodeGetWorldPosition(), cam->GetCameraData()->m_perspective);
++
+ 	cam->SetModelviewMatrix(viewmat);
++	m_rasterizer->SetModelviewMatrix(cam->GetStereoMatrix(m_rasterizer->GetEyeSeparation()) * viewmat);
++	m_rasterizer->SetCameraPosition(cam->NodeGetWorldPosition());
+ 
+ 	// restore the original orientation
+ 	cam->NodeSetLocalOrientation(camori);
+@@ -2030,8 +2032,10 @@
+ 
+ 	MT_Transform camtrans(cam->GetWorldToCamera());
+ 	MT_Matrix4x4 viewmat(camtrans);
+-	m_rasterizer->SetViewMatrix(viewmat, cam->NodeGetWorldOrientation(), cam->NodeGetWorldPosition(), 1.0);
++
+ 	cam->SetModelviewMatrix(viewmat);
++	m_rasterizer->SetModelviewMatrix(cam->GetStereoMatrix(m_rasterizer->GetEyeSeparation()) * viewmat);
++	m_rasterizer->SetCameraPosition(cam->NodeGetWorldPosition());
+ 
+ 	// restore the original orientation
+ 	cam->NodeSetLocalOrientation(camori);
+Index: source/gameengine/Ketsji/KX_Camera.cpp
+===================================================================
+--- source/gameengine/Ketsji/KX_Camera.cpp	(revision 42512)
++++ source/gameengine/Ketsji/KX_Camera.cpp	(working copy)
+@@ -45,17 +45,24 @@
+ 					:
+ 					KX_GameObject(sgReplicationInfo,callbacks),
+ 					m_camdata(camdata),
++					m_current_rendering_eye(0),
+ 					m_dirty(true),
+ 					m_normalized(false),
+ 					m_frustum_culling(frustum_culling),
+-					m_set_projection_matrix(false),
+ 					m_set_frustum_center(false),
+ 					m_delete_node(delete_node)
+ {
+ 	// setting a name would be nice...
+ 	m_name = "cam";
+-	m_projection_matrix.setIdentity();
+-	m_modelview_matrix.setIdentity();
++	for (unsigned int eye_index = 0 ; eye_index < 3 ; eye_index ++)
++	{
++	        m_set_projection_matrix[eye_index] = false;
++		m_projection_matrix[eye_index].setIdentity();
++		m_stereo_position_matrix[eye_index].setIdentity();
++		m_set_stereo_position_matrix[eye_index] = false;
++	}
++	m_camera_position_matrix.setIdentity();
++	updateModelviewMatrix();
+ }
+ 
+ 
+@@ -87,6 +94,14 @@
+ 	m_delete_node = false;
+ }
+ 
++/**
++* Update the modelview matrix by multiplying camera position and post-camera position matrices
++*/
++void KX_Camera::updateModelviewMatrix()
++{
++	m_modelview_matrix = m_stereo_position_matrix[m_current_rendering_eye] * m_camera_position_matrix;
++}
++
+ MT_Transform KX_Camera::GetWorldToCamera() const
+ { 
+ 	MT_Transform camtrans;
+@@ -131,28 +146,62 @@
+ }
+ 
+ 
++/**
++* Sets the current eye for both projection and modelview matrices
++*/
++void KX_Camera::SetRenderingMatricesEye(int eye)
++{
++         if ((eye >= 0) && (eye < 3))
++         {
++	            m_current_rendering_eye = eye;
++		    updateModelviewMatrix();
++         }
++}
+ 
+ /**
+ * Sets the projection matrix that is used by the rasterizer.
+ */
+ void KX_Camera::SetProjectionMatrix(const MT_Matrix4x4 & mat)
+ {
+-	m_projection_matrix = mat;
++        SetProjectionMatrix(mat, m_current_rendering_eye);
++}
++
++
++/**
++* Sets the projection matrix that is used by the rasterizer.
++*/
++void KX_Camera::SetProjectionMatrix(const MT_Matrix4x4 & mat, int eye)
++{
++	m_projection_matrix[eye] = mat;
+ 	m_dirty = true;
+-	m_set_projection_matrix = true;
++	m_set_projection_matrix[eye] = true;
+ 	m_set_frustum_center = false;
+ }
+ 
+ 
+ 
++
+ /**
++* Sets the projection matrix that is used by the rasterizer.
++*/
++void KX_Camera::SetStereoPositionMatrix(const MT_Matrix4x4 & mat, int eye)
++{
++	m_stereo_position_matrix[eye] = mat;
++	m_set_stereo_position_matrix[eye] = true;
++	updateModelviewMatrix();
++}
++
++
++
++/**
+ * Sets the modelview matrix that is used by the rasterizer.
+ */
+ void KX_Camera::SetModelviewMatrix(const MT_Matrix4x4 & mat)
+ {
+-	m_modelview_matrix = mat;
++	m_camera_position_matrix = mat;
+ 	m_dirty = true;
+ 	m_set_frustum_center = false;
++	updateModelviewMatrix();
+ }
+ 
+ 
+@@ -162,11 +211,75 @@
+ */
+ const MT_Matrix4x4& KX_Camera::GetProjectionMatrix() const
+ {
+-	return m_projection_matrix;
++        return GetProjectionMatrix(m_current_rendering_eye);
+ }
+ 
++/**
++* Gets the projection matrix that is used by the rasterizer.
++*/
++const MT_Matrix4x4& KX_Camera::GetProjectionMatrix(int eye) const
++{
++	return m_projection_matrix[eye];
++}
+ 
++/**
++* Gets the Post Camera matrix that is used by the rasterizer.
++*/
++const MT_Matrix4x4& KX_Camera::GetStereoPositionMatrix(int eye) const
++{
++	return m_stereo_position_matrix[eye];
++}
+ 
++const MT_Matrix4x4 KX_Camera::GetStereoMatrix(float eyeSeparation) const
++{
++        MT_Matrix4x4 result;
++	result.setIdentity();
++	if (m_set_stereo_position_matrix[m_current_rendering_eye]) {
++	        return m_stereo_position_matrix[m_current_rendering_eye];
++	}
++	// correction for stereo
++	if((m_current_rendering_eye != MIDDLE_EYE) && (m_camdata.m_perspective))
++	{
++	        MT_Matrix3x3 camOrientMat3x3 = NodeGetWorldOrientation();
++
++		MT_Vector3 unitViewDir(0.0, -1.0, 0.0);  // minus y direction, Blender convention
++		MT_Vector3 unitViewupVec(0.0, 0.0, 1.0);
++		MT_Vector3 viewDir, viewupVec;
++		MT_Vector3 eyeline;
++
++		// actual viewDir
++		viewDir = camOrientMat3x3 * unitViewDir;  // this is the moto convention, vector on right hand side
++		// actual viewup vec
++		viewupVec = camOrientMat3x3 * unitViewupVec;
++
++		// vector between eyes
++		eyeline = viewDir.cross(viewupVec);
++
++		switch(m_current_rendering_eye)
++		{
++			case LEFT_EYE:
++				{
++				// translate to left by half the eye distance
++				MT_Transform transform;
++				transform.setIdentity();
++				transform.translate(-(eyeline * eyeSeparation / 2.0));
++				result *= transform;
++				}
++				break;
++			case RIGHT_EYE:
++				{
++				// translate to right by half the eye distance
++				MT_Transform transform;
++				transform.setIdentity();
++				transform.translate(eyeline * eyeSeparation / 2.0);
++				result *= transform;
++				}
++				break;
++		}
++	}
++	return result;
++}
++
+ /**
+ * Gets the modelview matrix that is used by the rasterizer.
+ */
+@@ -178,12 +291,20 @@
+ 
+ bool KX_Camera::hasValidProjectionMatrix() const
+ {
+-	return m_set_projection_matrix;
++	return m_set_projection_matrix[m_current_rendering_eye];
+ }
+ 
++void KX_Camera::InvalidateAllProjectionMatrices(bool valid)
++{
++	for (unsigned int eye_index = 0 ; eye_index < 3 ; eye_index ++)
++	{
++	        m_set_projection_matrix[eye_index] = valid;
++	}
++}
++
+ void KX_Camera::InvalidateProjectionMatrix(bool valid)
+ {
+-	m_set_projection_matrix = valid;
++	m_set_projection_matrix[m_current_rendering_eye] = valid;
+ }
+ 
+ 
+@@ -250,7 +371,7 @@
+ 	if (!m_dirty)
+ 		return;
+ 
+-	MT_Matrix4x4 m = m_projection_matrix * m_modelview_matrix;
++	MT_Matrix4x4 m = m_projection_matrix[m_current_rendering_eye] * m_modelview_matrix;
+ 	// Left clip plane
+ 	m_planes[0] = m[3] + m[0];
+ 	// Right clip plane
+@@ -296,10 +417,10 @@
+ 	// the near and far extreme frustum points are equal.
+ 
+ 	// get the transformation matrix from device coordinate to camera coordinate
+-	MT_Matrix4x4 clip_camcs_matrix = m_projection_matrix;
++	MT_Matrix4x4 clip_camcs_matrix = m_projection_matrix[m_current_rendering_eye];
+ 	clip_camcs_matrix.invert();
+ 
+-	if (m_projection_matrix[3][3] == MT_Scalar(0.0))
++	if (m_projection_matrix[m_current_rendering_eye][3][3] == MT_Scalar(0.0))
+ 	{
+ 		// frustrum projection
+ 		// detect which of the corner of the far clipping plane is the farthest to the origin
+@@ -528,6 +649,16 @@
+ 	KX_PYATTRIBUTE_RW_FUNCTION("useViewport",	KX_Camera,	pyattr_get_use_viewport,  pyattr_set_use_viewport),
+ 	
+ 	KX_PYATTRIBUTE_RW_FUNCTION("projection_matrix",	KX_Camera,	pyattr_get_projection_matrix, pyattr_set_projection_matrix),
++	KX_PYATTRIBUTE_RW_FUNCTION("projection_matrix_left",	KX_Camera,	pyattr_get_left_projection_matrix, pyattr_set_left_projection_matrix),
++	KX_PYATTRIBUTE_RW_FUNCTION("projection_matrix_right",	KX_Camera,	pyattr_get_right_projection_matrix, pyattr_set_right_projection_matrix),
++
++	KX_PYATTRIBUTE_RW_FUNCTION("stereo_position_matrix",	KX_Camera,
++				   pyattr_get_stereo_position_matrix, pyattr_set_stereo_position_matrix),
++	KX_PYATTRIBUTE_RW_FUNCTION("stereo_position_matrix_left",	KX_Camera,
++				   pyattr_get_left_stereo_position_matrix, pyattr_set_left_stereo_position_matrix),
++	KX_PYATTRIBUTE_RW_FUNCTION("stereo_position_matrix_right",	KX_Camera,
++				   pyattr_get_right_stereo_position_matrix, pyattr_set_right_stereo_position_matrix),
++
+ 	KX_PYATTRIBUTE_RO_FUNCTION("modelview_matrix",	KX_Camera,	pyattr_get_modelview_matrix),
+ 	KX_PYATTRIBUTE_RO_FUNCTION("camera_to_world",	KX_Camera,	pyattr_get_camera_to_world),
+ 	KX_PYATTRIBUTE_RO_FUNCTION("world_to_camera",	KX_Camera,	pyattr_get_world_to_camera),
+@@ -748,7 +879,7 @@
+ 	}
+ 	
+ 	self->m_camdata.m_lens= param;
+-	self->m_set_projection_matrix = false;
++	self->InvalidateAllProjectionMatrices();
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
+@@ -768,7 +899,7 @@
+ 	}
+ 	
+ 	self->m_camdata.m_scale= param;
+-	self->m_set_projection_matrix = false;
++	self->InvalidateAllProjectionMatrices();
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
+@@ -788,7 +919,7 @@
+ 	}
+ 	
+ 	self->m_camdata.m_clipstart= param;
+-	self->m_set_projection_matrix = false;
++	self->InvalidateAllProjectionMatrices();
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
+@@ -808,7 +939,7 @@
+ 	}
+ 	
+ 	self->m_camdata.m_clipend= param;
+-	self->m_set_projection_matrix = false;
++	self->InvalidateAllProjectionMatrices();
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
+@@ -835,9 +966,21 @@
+ PyObject* KX_Camera::pyattr_get_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
+ {
+ 	KX_Camera* self= static_cast<KX_Camera*>(self_v);
+-	return PyObjectFrom(self->GetProjectionMatrix()); 
++	return PyObjectFrom(self->GetProjectionMatrix(MIDDLE_EYE)); 
+ }
+ 
++PyObject* KX_Camera::pyattr_get_left_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	return PyObjectFrom(self->GetProjectionMatrix(LEFT_EYE)); 
++}
++
++PyObject* KX_Camera::pyattr_get_right_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	return PyObjectFrom(self->GetProjectionMatrix(RIGHT_EYE)); 
++}
++
+ int KX_Camera::pyattr_set_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
+ {
+ 	KX_Camera* self= static_cast<KX_Camera*>(self_v);
+@@ -845,10 +988,83 @@
+ 	if (!PyMatTo(value, mat)) 
+ 		return PY_SET_ATTR_FAIL;
+ 	
+-	self->SetProjectionMatrix(mat);
++	self->SetProjectionMatrix(mat, MIDDLE_EYE);
+ 	return PY_SET_ATTR_SUCCESS;
+ }
+ 
++int KX_Camera::pyattr_set_left_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	MT_Matrix4x4 mat;
++	if (!PyMatTo(value, mat)) 
++		return PY_SET_ATTR_FAIL;
++	
++	self->SetProjectionMatrix(mat, LEFT_EYE);
++	return PY_SET_ATTR_SUCCESS;
++}
++
++int KX_Camera::pyattr_set_right_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	MT_Matrix4x4 mat;
++	if (!PyMatTo(value, mat)) 
++		return PY_SET_ATTR_FAIL;
++	
++	self->SetProjectionMatrix(mat, RIGHT_EYE);
++	return PY_SET_ATTR_SUCCESS;
++}
++
++PyObject* KX_Camera::pyattr_get_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	return PyObjectFrom(self->GetStereoPositionMatrix(MIDDLE_EYE)); 
++}
++
++PyObject* KX_Camera::pyattr_get_left_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	return PyObjectFrom(self->GetStereoPositionMatrix(LEFT_EYE)); 
++}
++
++PyObject* KX_Camera::pyattr_get_right_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	return PyObjectFrom(self->GetStereoPositionMatrix(RIGHT_EYE)); 
++}
++
++int KX_Camera::pyattr_set_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	MT_Matrix4x4 mat;
++	if (!PyMatTo(value, mat)) 
++		return PY_SET_ATTR_FAIL;
++	
++	self->SetStereoPositionMatrix(mat, MIDDLE_EYE);
++	return PY_SET_ATTR_SUCCESS;
++}
++
++int KX_Camera::pyattr_set_left_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	MT_Matrix4x4 mat;
++	if (!PyMatTo(value, mat)) 
++		return PY_SET_ATTR_FAIL;
++	
++	self->SetStereoPositionMatrix(mat, LEFT_EYE);
++	return PY_SET_ATTR_SUCCESS;
++}
++
++int KX_Camera::pyattr_set_right_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value)
++{
++	KX_Camera* self= static_cast<KX_Camera*>(self_v);
++	MT_Matrix4x4 mat;
++	if (!PyMatTo(value, mat)) 
++		return PY_SET_ATTR_FAIL;
++	
++	self->SetStereoPositionMatrix(mat, RIGHT_EYE);
++	return PY_SET_ATTR_SUCCESS;
++}
++
+ PyObject* KX_Camera::pyattr_get_modelview_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef)
+ {
+ 	KX_Camera* self= static_cast<KX_Camera*>(self_v);
+Index: source/gameengine/Ketsji/KX_Camera.h
+===================================================================
+--- source/gameengine/Ketsji/KX_Camera.h	(revision 42512)
++++ source/gameengine/Ketsji/KX_Camera.h	(working copy)
+@@ -72,17 +72,32 @@
+ //	}
+ 
+ 	/**
+-	 * Storage for the projection matrix that is passed to the
+-	 * rasterizer. */
+-	MT_Matrix4x4 m_projection_matrix;
++	 * Storage for the current active matrix (ie.: [0] no stereo, [1] left eye, [2] right eye)
++	 **/
++	int m_current_rendering_eye;
++
++	/**
++	 * Storage for the projection matrix that is passed to the rasterizer.
++	 * Array of three matrix : */
++	MT_Matrix4x4 m_projection_matrix[3];
+ 	//MT_Matrix4x4 m_projection_matrix1;
+ 
+ 	/**
++	 * Storage for the camera position matrix that is passed to the
++	 * rasterizer after beeing mutliplied by the current post-camera position matrix. */
++	MT_Matrix4x4 m_camera_position_matrix;
++	
++	/**
+ 	 * Storage for the modelview matrix that is passed to the
+ 	 * rasterizer. */
+ 	MT_Matrix4x4 m_modelview_matrix;
+ 	
+ 	/**
++	 * Storage for the post camera matrix that is passed to the rasterizer.
++	 * That is only used by stereoscopic rendering, for correct lightening computing.*/
++	MT_Matrix4x4 m_stereo_position_matrix[3];
++	
++	/**
+ 	 * true if the view frustum (modelview/projection matrix)
+ 	 * has changed - the clip planes (m_planes) will have to be
+ 	 * regenerated.
+@@ -106,10 +121,17 @@
+ 	
+ 	/**
+ 	 * true if this camera has a valid projection matrix.
++	 * Array of three matrix : [0] no stereo, [1] left eye, [2] right eye
+ 	 */
+-	bool         m_set_projection_matrix;
++	bool         m_set_projection_matrix[3];
+ 	
+ 	/**
++	 * true if this camera has a valid projection matrix.
++	 * Array of three matrix : [0] no stereo, [1] left eye, [2] right eye
++	 */
++	bool         m_set_stereo_position_matrix[3];
++	
++	/**
+ 	 * The center point of the frustum.
+ 	 */
+ 	MT_Point3    m_frustum_center;
+@@ -143,6 +165,11 @@
+ 		return m_planes;
+ 	}
+ 
++	/**
++	 * Update the modelview matrix by multiplying camera position and post-camera position matrices
++	 */
++	void updateModelviewMatrix();
++
+ public:
+ 
+ 	enum { INSIDE, INTERSECT, OUTSIDE } ;
+@@ -171,24 +198,50 @@
+ 
+ 	/* I want the camera orientation as well. */
+ 	const MT_Quaternion GetCameraOrientation() const;
++
++	void                            SetRenderingMatricesEye(int eye);
+ 		
+-	/** Sets the projection matrix that is used by the rasterizer. */
++	/** Sets the projection matrix that is used by the rasterizer.
++	 * Work on current active matrix
++	 */
+ 	void				SetProjectionMatrix(const MT_Matrix4x4 & mat);
+ 
++	/** Sets the projection matrix that is used by the rasterizer. */
++	void				SetProjectionMatrix(const MT_Matrix4x4 & mat, int eye);
++	
++	/** Sets the stereo matrix that is used by the rasterizer. */
++	void				SetStereoPositionMatrix(const MT_Matrix4x4 & mat, int eye);
++
+ 	/** Sets the modelview matrix that is used by the rasterizer. */
+ 	void				SetModelviewMatrix(const MT_Matrix4x4 & mat);
+ 		
+-	/** Gets the projection matrix that is used by the rasterizer. */
++	/** Gets the projection matrix that is used by the rasterizer.
++	 * Work on current active matrix */
+ 	const MT_Matrix4x4&		GetProjectionMatrix() const;
+ 	
++	/** Gets the projection matrix that is used by the rasterizer. */
++	const MT_Matrix4x4&		GetProjectionMatrix(int eye) const;
++
++	/** Gets the Post Camera matrix that is used by the rasterizer. */
++	const MT_Matrix4x4&		GetStereoPositionMatrix(int eye) const;
++	
++	/** Gets the Stereo matrix that is used by the rasterizer. */
++	const MT_Matrix4x4		GetStereoMatrix(float eyeSeparation) const;
++
+ 	/** returns true if this camera has been set a projection matrix. */
+ 	bool				hasValidProjectionMatrix() const;
+ 	
+ 	/** Sets the validity of the projection matrix.  Call this if you change camera
+ 	    data (eg lens, near plane, far plane) and require the projection matrix to be
+ 	    recalculated.
++	 * Work on current active matrix */
++	void				InvalidateProjectionMatrix(bool valid = false);
++
++	/** Sets the validity of the projection matrix.  Call this if you change camera
++	    data (eg lens, near plane, far plane) and require the projection matrix to be
++	    recalculated.
+ 	 */
+-	void				InvalidateProjectionMatrix(bool valid = false);
++	void				InvalidateAllProjectionMatrices(bool valid = false);
+ 	
+ 	/** Gets the modelview matrix that is used by the rasterizer. 
+ 	 *  @warning If the Camera is a dynamic object then this method may return garbage.  Use GetCameraToWorld() instead.
+@@ -308,7 +361,18 @@
+ 	static int			pyattr_set_use_viewport(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
+ 	
+ 	static PyObject*	pyattr_get_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static PyObject*	pyattr_get_left_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static PyObject*	pyattr_get_right_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+ 	static int			pyattr_set_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++	static int			pyattr_set_left_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++	static int			pyattr_set_right_projection_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++
++	static PyObject*	pyattr_get_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static PyObject*	pyattr_get_left_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static PyObject*	pyattr_get_right_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static int			pyattr_set_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++	static int			pyattr_set_left_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++	static int			pyattr_set_right_stereo_position_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
+ 	
+ 	static PyObject*	pyattr_get_modelview_matrix(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+ 	static PyObject*	pyattr_get_camera_to_world(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+Index: source/gameengine/Ketsji/KX_KetsjiEngine.h
+===================================================================
+--- source/gameengine/Ketsji/KX_KetsjiEngine.h	(revision 42512)
++++ source/gameengine/Ketsji/KX_KetsjiEngine.h	(working copy)
+@@ -45,6 +45,7 @@
+ 
+ class KX_TimeCategoryLogger;
+ 
++#define MIDDLE_EYE  0
+ #define LEFT_EYE  1
+ #define RIGHT_EYE 2
+ 
+Index: source/gameengine/Ketsji/KX_Light.cpp
+===================================================================
+--- source/gameengine/Ketsji/KX_Light.cpp	(revision 42512)
++++ source/gameengine/Ketsji/KX_Light.cpp	(working copy)
+@@ -253,11 +253,11 @@
+ 	cam->NodeUpdateGS(0);
+ 
+ 	/* setup rasterizer transformations */
+-	/* SetViewMatrix may use stereomode which we temporarily disable here */
++	/* old: SetViewMatrix may use stereomode which we temporarily disable here */
+ 	RAS_IRasterizer::StereoMode stereomode = ras->GetStereoMode();
+ 	ras->SetStereoMode(RAS_IRasterizer::RAS_STEREO_NOSTEREO);
+ 	ras->SetProjectionMatrix(projectionmat);
+-	ras->SetViewMatrix(modelviewmat, cam->NodeGetWorldOrientation(), cam->NodeGetWorldPosition(), cam->GetCameraData()->m_perspective);
++	ras->SetModelviewMatrix(modelviewmat);
+ 	ras->SetStereoMode(stereomode);
+ }
+ 
+Index: source/gameengine/Ketsji/KX_PythonInit.cpp
+===================================================================
+--- source/gameengine/Ketsji/KX_PythonInit.cpp	(revision 42512)
++++ source/gameengine/Ketsji/KX_PythonInit.cpp	(working copy)
+@@ -539,6 +539,14 @@
+ 	Py_RETURN_NONE;
+ }
+ 
++static const char *gPyGetCurrentBlendName_doc =
++"getCurrentBlendName()\n"
++"Gets the name of the current blend file.\n";
++static PyObject* gPyGetCurrentBlendName(PyObject* self)
++{
++  	return PyUnicode_DecodeFSDefault(gp_GamePythonPath);
++}
++
+ static const char *gPyGetCurrentScene_doc =
+ "getCurrentScene()\n"
+ "Gets a reference to the current scene.\n";
+@@ -797,6 +805,7 @@
+ 	{"saveGlobalDict", (PyCFunction)gPySaveGlobalDict, METH_NOARGS, (const char *)gPySaveGlobalDict_doc},
+ 	{"loadGlobalDict", (PyCFunction)gPyLoadGlobalDict, METH_NOARGS, (const char *)gPyLoadGlobalDict_doc},
+ 	{"sendMessage", (PyCFunction)gPySendMessage, METH_VARARGS, (const char *)gPySendMessage_doc},
++	{"getCurrentBlendName", (PyCFunction) gPyGetCurrentBlendName, METH_NOARGS, gPyGetCurrentBlendName_doc},
+ 	{"getCurrentController", (PyCFunction) SCA_PythonController::sPyGetCurrentController, METH_NOARGS, SCA_PythonController::sPyGetCurrentController__doc__},
+ 	{"getCurrentScene", (PyCFunction) gPyGetCurrentScene, METH_NOARGS, gPyGetCurrentScene_doc},
+ 	{"getSceneList", (PyCFunction) gPyGetSceneList, METH_NOARGS, (const char *)gPyGetSceneList_doc},
+Index: source/gameengine/Ketsji/KX_Scene.h
+===================================================================
+--- source/gameengine/Ketsji/KX_Scene.h	(revision 42512)
++++ source/gameengine/Ketsji/KX_Scene.h	(working copy)
+@@ -105,6 +105,7 @@
+ 
+ #ifdef WITH_PYTHON
+ 	PyObject*	m_attr_dict;
++	PyObject*       m_draw_call_pre_render;
+ 	PyObject*	m_draw_call_pre;
+ 	PyObject*	m_draw_call_post;
+ #endif
+@@ -612,10 +613,14 @@
+ 	static PyObject*	pyattr_get_cameras(void* self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+ 	static PyObject*	pyattr_get_active_camera(void* self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+ 	static int			pyattr_set_active_camera(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++	static PyObject*	pyattr_get_drawing_callback_pre_render(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static int			pyattr_set_drawing_callback_pre_render(void *selv_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
+ 	static PyObject*	pyattr_get_drawing_callback_pre(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+ 	static int			pyattr_set_drawing_callback_pre(void *selv_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
+ 	static PyObject*	pyattr_get_drawing_callback_post(void *self_v, const KX_PYATTRIBUTE_DEF *attrdef);
+ 	static int			pyattr_set_drawing_callback_post(void *selv_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
++	static PyObject*	pyattr_get_frame_type(void* self_v, const KX_PYATTRIBUTE_DEF *attrdef);
++	static int			pyattr_set_frame_type(void *selv_v, const KX_PYATTRIBUTE_DEF *attrdef, PyObject *value);
+ 
+ 	virtual PyObject* py_repr(void) { return PyUnicode_FromString(GetName().ReadPtr()); }
+ 	
+@@ -628,6 +633,7 @@
+ 	 */
+ 	void RunDrawingCallbacks(PyObject* cb_list);
+ 	
++	PyObject* GetPreRenderCB() { return m_draw_call_pre_render; };
+ 	PyObject* GetPreDrawCB() { return m_draw_call_pre; };
+ 	PyObject* GetPostDrawCB() { return m_draw_call_post; };
+ #endif
+Index: source/gameengine/Rasterizer/RAS_IRasterizer.h
+===================================================================
+--- source/gameengine/Rasterizer/RAS_IRasterizer.h	(revision 42512)
++++ source/gameengine/Rasterizer/RAS_IRasterizer.h	(working copy)
+@@ -251,14 +251,17 @@
+ 	 */
+ 	virtual void	SetProjectionMatrix(const MT_Matrix4x4 & mat)=0;
+ 	/**
+-	 * Sets the modelview matrix.
++	 * Set the modelview matrix for the rasterizer.
++	 * @param mat The modelview matrix.
+ 	 */
+-	virtual void	SetViewMatrix(const MT_Matrix4x4 & mat,
+-								const MT_Matrix3x3 & ori,
+-								const MT_Point3 & pos,
+-								bool perspective)=0;
++	virtual void	SetModelviewMatrix(const MT_Matrix4x4 & mat)=0;
++
+ 	/**
+ 	 */
++	virtual void    SetCameraPosition(const	MT_Point3 & pos)=0;
++
++	/**
++	 */
+ 	virtual const	MT_Point3& GetCameraPosition()=0;
+ 	virtual bool	GetCameraOrtho()=0;
+ 
+Index: source/gameengine/Rasterizer/RAS_OpenGLRasterizer/RAS_OpenGLRasterizer.cpp
+===================================================================
+--- source/gameengine/Rasterizer/RAS_OpenGLRasterizer/RAS_OpenGLRasterizer.cpp	(revision 42512)
++++ source/gameengine/Rasterizer/RAS_OpenGLRasterizer/RAS_OpenGLRasterizer.cpp	(working copy)
+@@ -979,6 +979,25 @@
+ 	m_camortho= (mat[3][3] != 0.0f);
+ }
+ 
++void RAS_OpenGLRasterizer::SetModelviewMatrix(const MT_Matrix4x4 & mat)
++{
++  	m_viewinvmatrix = mat;
++  	m_viewinvmatrix = m_viewmatrix;
++	m_viewinvmatrix.invert();
++
++	glMatrixMode(GL_MODELVIEW);
++	double matrix[16];
++	/* Get into argument. Looks a bit dodgy, but it's ok. */
++	mat.getValue(matrix);
++	/* Internally, MT_Matrix4x4 uses doubles (MT_Scalar). */
++	glLoadMatrixd(matrix);	
++}
++
++void RAS_OpenGLRasterizer::SetCameraPosition(const MT_Point3 & pos)
++{
++	m_campos = pos;
++}
++
+ MT_Matrix4x4 RAS_OpenGLRasterizer::GetFrustumMatrix(
+ 	float left,
+ 	float right,
+@@ -1052,67 +1071,6 @@
+ 	return result;
+ }
+ 
+-
+-// next arguments probably contain redundant info, for later...
+-void RAS_OpenGLRasterizer::SetViewMatrix(const MT_Matrix4x4 &mat, 
+-										 const MT_Matrix3x3 & camOrientMat3x3,
+-										 const MT_Point3 & pos,
+-										 bool perspective)
+-{
+-	m_viewmatrix = mat;
+-
+-	// correction for stereo
+-	if(Stereo() && perspective)
+-	{
+-		MT_Vector3 unitViewDir(0.0, -1.0, 0.0);  // minus y direction, Blender convention
+-		MT_Vector3 unitViewupVec(0.0, 0.0, 1.0);
+-		MT_Vector3 viewDir, viewupVec;
+-		MT_Vector3 eyeline;
+-
+-		// actual viewDir
+-		viewDir = camOrientMat3x3 * unitViewDir;  // this is the moto convention, vector on right hand side
+-		// actual viewup vec
+-		viewupVec = camOrientMat3x3 * unitViewupVec;
+-
+-		// vector between eyes
+-		eyeline = viewDir.cross(viewupVec);
+-
+-		switch(m_curreye)
+-		{
+-			case RAS_STEREO_LEFTEYE:
+-				{
+-				// translate to left by half the eye distance
+-				MT_Transform transform;
+-				transform.setIdentity();
+-				transform.translate(-(eyeline * m_eyeseparation / 2.0));
+-				m_viewmatrix *= transform;
+-				}
+-				break;
+-			case RAS_STEREO_RIGHTEYE:
+-				{
+-				// translate to right by half the eye distance
+-				MT_Transform transform;
+-				transform.setIdentity();
+-				transform.translate(eyeline * m_eyeseparation / 2.0);
+-				m_viewmatrix *= transform;
+-				}
+-				break;
+-		}
+-	}
+-
+-	m_viewinvmatrix = m_viewmatrix;
+-	m_viewinvmatrix.invert();
+-
+-	// note: getValue gives back column major as needed by OpenGL
+-	MT_Scalar glviewmat[16];
+-	m_viewmatrix.getValue(glviewmat);
+-
+-	glMatrixMode(GL_MODELVIEW);
+-	glLoadMatrixd(glviewmat);
+-	m_campos = pos;
+-}
+-
+-
+ const MT_Point3& RAS_OpenGLRasterizer::GetCameraPosition()
+ {
+ 	return m_campos;
+Index: source/gameengine/Rasterizer/RAS_OpenGLRasterizer/RAS_OpenGLRasterizer.h
+===================================================================
+--- source/gameengine/Rasterizer/RAS_OpenGLRasterizer/RAS_OpenGLRasterizer.h	(revision 42512)
++++ source/gameengine/Rasterizer/RAS_OpenGLRasterizer/RAS_OpenGLRasterizer.h	(working copy)
+@@ -170,14 +170,10 @@
+ 
+ 	virtual void	SetProjectionMatrix(MT_CmMatrix4x4 & mat);
+ 	virtual void	SetProjectionMatrix(const MT_Matrix4x4 & mat);
+-	virtual void	SetViewMatrix(
+-						const MT_Matrix4x4 & mat,
+-						const MT_Matrix3x3 & ori,
+-						const MT_Point3 & pos,
+-						bool perspective
+-					);
++	virtual void	SetModelviewMatrix(const MT_Matrix4x4 & mat);
++	virtual void    SetCameraPosition(const	MT_Point3 & pos);
+ 
+-	virtual const	MT_Point3& GetCameraPosition();
++	virtual const   MT_Point3& GetCameraPosition();
+ 	virtual bool	GetCameraOrtho();
+ 	
+ 	virtual void	SetFog(
+Index: CMakeLists.txt
+===================================================================
+--- CMakeLists.txt	(revision 42512)
++++ CMakeLists.txt	(working copy)
+@@ -130,7 +130,7 @@
+ option(WITH_FFTW3         "Enable FFTW3 support (Used for smoke and audio effects)" OFF)
+ option(WITH_BULLET        "Enable Bullet (Physics Engine)" ON)
+ option(WITH_GAMEENGINE    "Enable Game Engine" ON)
+-option(WITH_PLAYER        "Build Player" OFF)
++option(WITH_PLAYER        "Build Player" ON)
+ 
+ # GHOST Windowing Library Options
+ option(WITH_GHOST_DEBUG   "Enable debugging output for the GHOST library" OFF)

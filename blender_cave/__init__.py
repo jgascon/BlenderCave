@@ -35,10 +35,16 @@
 
 import bge
 import os
+import sys
+import logging
+import time
+from . import vrpn_blender
 from . import exceptions
 
 def loadBlenderCave():
     if hasattr(bge.logic, 'initiated') == False:
+        logging.basicConfig(level=logging.DEBUG,format='[BlenderCave] %(message)s',)
+
         # Then, we must initiate blender_cave !
         bge.logic.initiated = False # Start by saying it is not configured !
         # If the geometry is not 
@@ -51,36 +57,59 @@ def loadBlenderCave():
         if hasattr(bge.logic, 'synchronizer') == False:
             raise exceptions.Main("Cannot load synchronization system of the current Virtual Environment !")
         scene = bge.logic.getCurrentScene()
-        scene.pre_render.append(run)
+        scene.pre_render.append(_run)
         bge.logic.initiated = True
     elif bge.logic.initiated == False:
         return False
     return True
 
-def run():
+def _run():
     try:
         bge.logic.synchronizer.run()
     except exceptions.Quit as quit:
-        print(quit)
+        logging.debug(quit)
         bge.logic.endGame()
         sys.exit()
     bge.logic.geometry.updateProjectionMatrices()
 
+def run_vrpn():
+    try:
+        if isMaster():
+            vrpn_blender.run()
+    except exceptions.Quit as quit:
+        logging.debug(quit)
+        bge.logic.endGame()
+        sys.exit()
+    except exceptions.Main:
+        pass
+
 def quit(reason):
-    raise exceptions.Quit(reason)
+    if isMaster():
+        bge.logic.synchronizer.quit(reason)
+        bge.logic.synchronizer.run()
+        time.sleep(1)
+        bge.logic.endGame()
+        sys.exit()
+    else:
+        raise exceptions.Quit(reason)
+
+def getUserIDByName(userName):
+    if hasattr(bge.logic, 'geometry') == False:
+        raise exceptions.Main("Error: blender_cave must be initialized first !")
+    return bge.logic.geometry.getUserIDByName(userName)
 
 def getUserPosition(userID):
-    if hasatt(bge.logic, 'geometry') == False:
+    if hasattr(bge.logic, 'geometry') == False:
         raise exceptions.Main("Error: blender_cave must be initialized first !")
     return bge.logic.geometry.getUserPosition(userID)
     
 def setUserPosition(userID, position):
-    if hasatt(bge.logic, 'geometry') == False:
+    if hasattr(bge.logic, 'geometry') == False:
         raise exceptions.Main("Error: blender_cave must be initialized first !")
     bge.logic.geometry.setUserPosition(userID, position)
     
 def isMaster():
-    if hasatt(bge.logic, 'geometry') == False:
+    if hasattr(bge.logic, 'geometry') == False:
         raise exceptions.Main("Error: blender_cave must be initialized first !")
     return bge.logic.geometry.isMaster()
 
@@ -97,3 +126,7 @@ def setScale(scale):
     
 def addObjectToSynchronize(objectToSynchronize):
     synchronizer.addObjectToSynchronize(objectToSynchronize)
+
+def isLoaded():
+    return (hasattr(bge.logic, 'geometry') and hasattr(bge.logic, 'synchronizer'))
+

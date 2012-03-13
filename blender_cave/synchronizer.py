@@ -38,7 +38,7 @@ import select
 import time
 import sys
 import bge
-import pprint
+import logging
 from . import connector
 from . import exceptions
 from . import packer
@@ -79,7 +79,8 @@ class Synchronizer:
                               'other object'    : -3,
                               'new item'        : -4,
                               'delete item'     : -5,
-                              'NOP'             : -6}
+                              'quit'            : -6,
+                              'NOP'             : -7}
 
         self._itemsDefinitions = []
         Scene = ItemDefinition('KX_Scene', {}, ['objects'])
@@ -153,6 +154,10 @@ class Synchronizer:
         while len(self._receivedBuffer) > 0:
             item_state, self._receivedBuffer = packer.command(self._receivedBuffer)
 
+            if item_state == self._metaCommands['quit']:
+                reason, self._receivedBuffer = packer.string(self._receivedBuffer)
+                raise exceptions.Quit(reason)
+
             # First, check the state ...
             if item_state == self._metaCommands['NOP']:
                 break # NOP means empty buffer in case of no update ...
@@ -197,30 +202,36 @@ class Synchronizer:
         return False
 
 
+    def quit(self, reason):
+        self._quit = reason
+
     def run(self):
         if self._started == False:
             if self._master == False:
-                print("Waiting for Start !")
+                logging.debug("Waiting for Start !")
             self._started = True
 
         if self._master:
-            self._hierarchyBuffer = b''
-            self._attributsBuffer = b''
-            if (hasattr(self, '_master_items_definitions') == False):
-                self._master_items_definitions = {}
-            itemBuffer = self._createBufferFromItem(bge.logic.getCurrentScene(), bge.logic.getCurrentScene())
-            buffer = self._hierarchyBuffer + self._attributsBuffer
-            for objectToSynchronizeID in range(len(bge.logic.objectsToSynchronize)):
-                objectToSynchronize = bge.logic.objectsToSynchronize[objectToSynchronizeID]
-                object_buffer = objectToSynchronize.synchronizerPack()
-                if len(object_buffer) > 0:
-                    buffer += packer.command(self._metaCommands['other object']) + packer.integer(objectToSynchronizeID)
-                    buffer += packer.integer(len(object_buffer)) + object_buffer
-            del (self._hierarchyBuffer)
-            del (self._attributsBuffer)
-            # In case of buffer is empty (ie : no update), we send NOP to don't break the frame rate ...
-            if (len(buffer) == 0):
-                buffer = packer.command(self._metaCommands['NOP'])
+            if hasattr(self, '_quit'):
+                buffer = packer.command(self._metaCommands['quit']) + packer.string(self._quit)
+            else:
+                self._hierarchyBuffer = b''
+                self._attributsBuffer = b''
+                if (hasattr(self, '_master_items_definitions') == False):
+                    self._master_items_definitions = {}
+                itemBuffer = self._createBufferFromItem(bge.logic.getCurrentScene(), bge.logic.getCurrentScene())
+                buffer = self._hierarchyBuffer + self._attributsBuffer
+                for objectToSynchronizeID in range(len(bge.logic.objectsToSynchronize)):
+                    objectToSynchronize = bge.logic.objectsToSynchronize[objectToSynchronizeID]
+                    object_buffer = objectToSynchronize.synchronizerPack()
+                    if len(object_buffer) > 0:
+                        buffer += packer.command(self._metaCommands['other object']) + packer.integer(objectToSynchronizeID)
+                        buffer += packer.integer(len(object_buffer)) + object_buffer
+                del (self._hierarchyBuffer)
+                del (self._attributsBuffer)
+                # In case of buffer is empty (ie : no update), we send NOP to don't break the frame rate ...
+                if (len(buffer) == 0):
+                    buffer = packer.command(self._metaCommands['NOP'])
             self._connector.sendBuffer(buffer)
         else:
             self._receivedBuffer = self._connector.receiveData()

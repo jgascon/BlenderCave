@@ -68,3 +68,10 @@ class Quit (Common):
     def __init__(self, reason):
         super(Quit, self).__init__(reason)
 
+class User (Common):
+    def __init__(self, reason):
+        super(User, self).__init__(reason)
+
+class VRPN (Common):
+    def __init__(self, reason):
+        super(VRPN, self).__init__(reason)

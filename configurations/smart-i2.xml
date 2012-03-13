@@ -1,5 +1,5 @@
 <virtualEnvironment name="SMARTI2" synchroPort="2731" synchroAddress="225.0.0.37">
-  <user ID='0' name='user A' eye_separation="0.00">
+  <user ID='0' name='user A' eye_separation="0.06">
     <default_position>0.0, 0.0, 0.0</default_position>
   </user>
   <user>
