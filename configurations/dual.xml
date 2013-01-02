@@ -1,20 +1,20 @@
-<virtualEnvironment name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
+<blender_cave name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
 
-  <user ID='0' name='user A'>
+  <user name='user A'>
     <default_position>0.0, 0.0, 0.0</default_position>
   </user>
 
   <computer name="*">
 
     <screen name="master">
-      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
       <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
       <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
     </screen>
 
     <screen name="slave">
-      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
       <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
       <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
@@ -22,4 +22,4 @@
 
   </computer>
 
-</virtualEnvironment>
+</blender_cave>

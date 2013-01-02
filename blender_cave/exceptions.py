@@ -1,4 +1,5 @@
-## Copyright Â© LIMSI-CNRS (2011)
+# -*- coding: iso-8859-1 -*-
+## Copyright © LIMSI-CNRS (2011)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -44,11 +45,15 @@ class Main (Common):
     def __init__(self, reason):
         super(Main, self).__init__(reason)
 
+class Environment (Common):
+    def __init__(self, reason):
+        super(Environment, self).__init__(reason)
+
 class Configure (Common):
     def __init__(self, reason):
         super(Configure, self).__init__(reason)
 
-class Synchronizer (Common):
+class Broadcaster (Common):
     def __init__(self, reason):
         super(Synchronizer, self).__init__(reason)
 
@@ -72,6 +77,22 @@ class User (Common):
     def __init__(self, reason):
         super(User, self).__init__(reason)
 
+class VirtualEnvironment (Common):
+    def __init__(self, reason):
+        super(VirtualEnvironment, self).__init__(reason)
+
 class VRPN (Common):
     def __init__(self, reason):
         super(VRPN, self).__init__(reason)
+
+class VRPN_Invalid_Device(Common):
+    def __init__(self, reason):
+        super(VRPN_Invalid_Device, self).__init__(reason)
+
+class OSC_Invalid_Type(Common):
+    def __init__(self, reason):
+        super(OSC_Invalid_Type, self).__init__(reason)
+
+class Reload(Common):
+    def __init__(self, reason):
+        super(Reload, self).__init__(reason)

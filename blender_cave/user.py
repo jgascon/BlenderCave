@@ -1,4 +1,5 @@
-## Copyright Â© LIMSI-CNRS (2011)
+# -*- coding: iso-8859-1 -*-
+## Copyright © LIMSI-CNRS (2011)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -34,36 +35,29 @@
 ## 
 
 import mathutils
-from . import parser
-from . import synchronizer
-from . import packer
-from . import exceptions
+import blender_cave.base
+import blender_cave.buffer
 
-class User:
+class User(blender_cave.base.Base):
 
-    def __init__(self, node):
-        if (node.hasAttributes() == False) or (('ID' in node.attributes) == False):
-            raise exceptions.User("User don't have a valid ID !");
-        self._id = int(node.attributes['ID'].value)
-        if 'name' in node.attributes:
-            self._name = node.attributes['name'].value
-        else:
-            self._name = 'User '+str(self._id)
-        if 'eye_separation' in node.attributes:
-            self._eye_separation = float(node.attributes['eye_separation'].value)
-        else:
-            self._eye_separation = 0.06
-        child = node.firstChild
-        while child:
-            if child.nodeName == 'default_position':
-                self._default_position = mathutils.Matrix.Translation((parser.getVectorFromNode(child)))
-            child = child.nextSibling
+    SYNCHRONIZER_COMMAND_USER_POSITION    = b'u'
+    SYNCHRONIZER_COMMAND_VEHICLE_POSITION = b'v'
 
-        if hasattr(self, '_default_position') == False:
-            raise exceptions.user("No default position for the user !");
+    def __init__(self, parent, id, config):
+        super(User, self).__init__(parent)
 
-        synchronizer.addObjectToSynchronize(self)
-        return
+        self._id               = id
+        self._name             = config['name']
+        self._eye_separation   = config['eye_separation']
+        self._default_position = mathutils.Matrix.Translation((config['default_position']))
+
+        self._position         = self._default_position
+        self._vehicle_position = mathutils.Matrix()
+
+        self._previous         = { 'user_position': 0,
+                                   'vehicle_position': 0 }
+
+        self.getBlenderCave().addObjectToSynchronize(self, 'userSynchronization-' + self._name)
 
     def getID(self):
         return self._id
@@ -72,9 +66,10 @@ class User:
         return self._name
         
     def getPosition(self):
-        if hasattr(self, '_position'):
-            return self. _position
-        return self._default_position
+        return self. _position
+
+    def getVehiclePosition(self):
+        return self._vehicle_position
 
     def getEyeSeparation(self):
         return self._eye_separation
@@ -82,14 +77,34 @@ class User:
     def setPosition(self, position):
         self._position = position
 
-    # Both methods are use for the synchronization mechanism ...
-    def synchronizerPack(self):
-        currentPosition = self.getPosition()
-        if (hasattr(self, '_previousSynchronizedPosition') == False) or (self._previousSynchronizedPosition != currentPosition):
-            self._previousSynchronizedPosition = currentPosition
-            return packer.matrix4x4(currentPosition)
-        return b''
+    def setVehiclePosition(self, position):
+        self._vehicle_position = position
 
-    def synchronizerUnpack(self, buffer):
-        matrix, buffer = packer.matrix4x4(buffer)
-        self.setPosition(matrix)
+    def resetVehiclePosition(self):
+        self._vehicle_position = mathutils.Matrix()
+
+    # Both methods are use for the synchronization mechanism ...
+    def getSynchronizerBuffer(self):
+        buffer = blender_cave.buffer.Buffer()
+
+        if (self._previous['user_position'] != self.getPosition()):
+            self._previous['user_position'] = self.getPosition()
+            buffer.command(self.SYNCHRONIZER_COMMAND_USER_POSITION)
+            buffer.matrix_4x4(self.getPosition())
+
+        if (self._previous['vehicle_position'] != self.getVehiclePosition()):
+            self._previous['vehicle_position'] = self.getVehiclePosition()
+            buffer.command(self.SYNCHRONIZER_COMMAND_VEHICLE_POSITION)
+            buffer.matrix_4x4(self.getVehiclePosition())
+
+        return buffer
+
+    def processSynchronizerBuffer(self, buffer):
+        while not buffer.isEmpty():
+            command = buffer.command()
+
+            if (command == self.SYNCHRONIZER_COMMAND_USER_POSITION):
+                self.setPosition(buffer.matrix_4x4())
+
+            elif (command == self.SYNCHRONIZER_COMMAND_VEHICLE_POSITION):
+                self.setVehiclePosition(buffer.matrix_4x4())

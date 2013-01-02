@@ -1,17 +1,13 @@
-<virtualEnvironment name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
+<blender_cave name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
 
-  <user ID='0' name='user A' eye_separation='0.06'>
-    <default_position>0.0, 0.0, 0.0</default_position>
-  </user>
-
-  <user ID='1' name='user B' eye_separation='0.06'>
+  <user name='user A' eye_separation='0.06'>
     <default_position>0.0, 0.0, 0.0</default_position>
   </user>
 
   <computer name="*">
 
     <screen name="console">
-      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
       <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
       <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
@@ -34,4 +30,4 @@
     <button name="Input0" host="localhost" processor_method="buttons"/>
   </vrpn>
 
-</virtualEnvironment>
+</blender_cave>

@@ -1,12 +1,12 @@
-<virtualEnvironment name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
-  <!-- We are able to render as many as usefull users for a given Virtual Environment. Each use must be represented by an ID. It also may have a name that is use to be display in warnings and errors -->
-  <user ID='0' name='user A' eye_separation='0.06'>
+<blender_cave name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
+  <!-- We are able to render as many as usefull users for a given Virtual Environment. Each use must be represented by a name (that is converted inside to an ID). -->
+  <user name='user A' eye_separation='0.06'>
 
     <!-- Each user must have a default position. ie.: a position used when there is no tracking available. By default (0.0, 0.0, 0.0) means that the user is a the camera position. -->
     <default_position>0.0, 0.0, 0.0</default_position>
   </user>
 
-  <user ID='1'>
+  <user>
     <default_position>0.0, 0.0, 0.0</default_position>
   </user>
 
@@ -17,18 +17,23 @@
 
     <!-- Each screen represent an instance of blender that is running on a given computer. For example, when a single computer render several screens for avirtual environment, one instance of blender must be run for each screen. The screen "name" is use to describe one instance of blenderCAVE that is running on a given computer -->
     <screen name="console">
+      <!-- player section is used by BlenderCave.py to know the window parameters for the blenderplayer window
+	   display : under Unix, will be for the DISPLAY variable (ie. : multi-head systems)
+	   options : whatever options (generally, display size or stereo windows or ...)
+      -->
+      <player display=":0.1" options="-w 600 600"/>
 
       <!-- Graphic buffer represents OpenGL current buffer. Only usefull in case of Quad-Buffer stereo rendering
       The "name" must be :
       * 'alone' : for no quadbuffer stereo buffer
       * 'left'  : for left buffer
       * 'right' : for right buffer
-      The 'user' correspond to the id given above to the user (see section "user")
+      The 'user' correspond to the name of the user (see section "user")
       The 'eye' must be 'middle' (no stereo), 'left' or 'right'
       -->
-      <graphic_buffer name="alone" user="0" eye="middle"/>
-      <graphic_buffer name="right" user="0" eye="right"/>
-      <graphic_buffer name="left" user="0" eye="left"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
+      <graphic_buffer name="right" user='user A' eye="right"/>
+      <graphic_buffer name="left" user='user A' eye="left"/>
 
       <!-- In case of blenderplayer full screen, that may be usefull to reduce the viewport
       Coordinates : x1, y1, x2, y2 -->
@@ -41,7 +46,7 @@
     </screen>
 
     <screen name="other console">
-      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">0.0, 1.0, -1.0</corner>
       <corner name="topLeftCorner">-1.4142136, 1.0, 0.4142136</corner>
       <corner name="bottomRightCorner">0.0, -1.0, -1.0</corner>
@@ -52,16 +57,16 @@
   <computer name="other computer">
 
     <screen name="first screen">
-      <graphic_buffer name="left" user="0" eye="left"/>
-      <graphic_buffer name="right" user="0" eye="right"/>
-      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="left" user='user A' eye="left"/>
+      <graphic_buffer name="right" user='user A' eye="right"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">2.395,0.0,-1.35</corner>
       <corner name="topLeftCorner">-2.395,0.0,-1.35</corner>
       <corner name="bottomRightCorner">2.395,0.0,1.35</corner>
     </screen>
 
     <screen name="second">
-      <graphic_buffer name="alone" user="0" eye="middle"/>
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">-2.395,2.7,-1.35</corner>
       <corner name="topLeftCorner">-2.395,2.7,1.35</corner>
       <corner name="bottomRightCorner">-2.395,0.0,-1.35</corner>
@@ -70,11 +75,12 @@
   </computer>
 
   <!--
-      For VRPN management, blender_cave will try to load the module with the same nama than the current .blend file prefixed by vrpn_ (ie : bpcem_playground_CAVE.blend => vrpn_bpcem_playground_CAVE.py)
+      For VRPN management, Blender Cave will try to load the module with the same name than the current .blend file prefixed by vrpn_ (ie : bpcem_playground_CAVE.blend => vrpn_bpcem_playground_CAVE.py)
       See samples for its use
   -->
   <vrpn>
-    <tracker name="Tracker0" host="localhost">
+    <tracker name="Tracker0" host="localhost" scale='1.0'>
+      <!-- Le paramètre "scale" permet de changer l'échelle globale du tracker (certains utilisent le milimètre ...) -->
 
       <transformation>
 	<!--
@@ -103,7 +109,8 @@
       <sensor id="1" processor_method='tracker_1'/>
     </tracker>
     <tracker name="Tracker1" host="localhost" />
-    <Analog name="Analog1" host="localhost" />
+    <analog name="Analog0" host="localhost" processor_method="movements"/>
+    <button name="Button0" host="localhost" processor_method="buttons"/>
   </vrpn>
 
-</virtualEnvironment>
+</blender_cave>

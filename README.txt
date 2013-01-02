@@ -32,40 +32,21 @@ same conditions as regards security.
 The fact that you are presently reading this means that you have had
 knowledge of the CeCILL license and that you accept its terms.
 
+BEWARE: Blender-CAVE requires a patched version of Blender. The patch can be found in 'patch/blender_revision_????????.patch'.
+
 
 How to use Blender-CAVE - LIMSI :
 There is as many blender running than there is screen in the CAVE. Thus, there can be several blender running on a single computer. For instance, that is used inside SMART-I², where all four screens (ie. : 2 physical screens multiply by 2 - 1 stereoscopic on each screen) are rendered by the same computer.
 Moreover, a Virtual Environment may display scenes for several users. For instance, EVE, allows two users working at the same time on the same screens. Each user has its own independant stereoscopic point of view on the scene.
-Thus, the XML configuration file (look at EVE.xml to get documentation on the configuraion file) fully describe the Virtual Environment : users and screens.
+Thus, the XML configuration file (look at sample.xml to get documentation on the configuraion file) fully describe the Virtual Environment : users, screens, VRPN connexion ...
 
 Blender-CAVE contains several files.
-All .py files represent the classes and the modules used by Blender-CAVE. The main module is blenderCAVE. It contains, a 'run()' function that process synchonization and update of the camera projection matrix. But before doing such tasks, the blenderCAVE module loads the configuration file to know the topology of the Virtual Rendering system.
-The 'multi.blend' file is a sample file of how to include blenderCAVE in a scene.
+All .py files represent the classes and the modules used by Blender-CAVE. The main module is blender_cave. You just have to import this module to load BlenderCave. Moreover, you should run blender_cave.run() each frame to update "external" modules (VRPN, OSC ...).
 
-Blender-CAVE rely on several environment variables :
-* BLENDER_CAVE_PATH : the path where resides blenderCAVE classes and modules files.
-* BLENDER_CAVE_CONF : the path where resides the XML configuration files (may be $BLENDER_CAVE_PATH).
-* BLENDER_CAVE_CONF_FILE : the name of the configuration file to load (can be EVE.xml, smart-i2.xml or whatever else describing your own virtual environment).
-* BLENDER_CAVE_CONF_SCREEN : the name of the screen to load as given inside XML configuration file.
+BlenderCave is running through BlenderCave.py script. You must edit its head (until "# Below, you should not have to modify anything ...") to adapt it to your configuration.
 
-BLENDER_CAVE_PATH and BLENDER_CAVE_CONF should be define as environment variables. BLENDER_CAVE_CONF_FILE and BLENDER_CAVE_CONF_SCREEN can be pass on blender command line. To do that, just launch blender plus '--' and the configuration file name and the screen name.
-For instance : blender ??? -- EVE.xml control
-BLENDER_CAVE_PATH, BLENDER_CAVE_CONF and BLENDER_CAVE_CONF_FILE must point to the sames paths and files on all nodes that render for the Virtual Environment. Ottherwise, there may be configuration problem.
-
-Including head tracking is not done, now. But, it can be easily added by calling bge.logic.geometry.setUserPosition(userID, position), with 'userID' = the ID of the user and 'position' is a mathutils.Matrix representing the reference frame of the user.
-
-For blenderCAVE to work, you should add this to an element that is run once
+For Blender-CAVE to work, you should add this python code to a Logic Controller that is run 'always' (ie. : each frame).
 =============================================================
-import sys
-import os
-
-if 'BLENDER_CAVE_PATH' in os.environ:
-    sys.path.insert(0, os.environ['BLENDER_CAVE_PATH'])
-
 import blender_cave
 
-try:
-    blender_cave.run()
-
-except blender_cave.exceptions.Common as error:
-    print(error)
+blender_cave.run()
