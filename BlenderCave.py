@@ -149,8 +149,8 @@ try:
         blend_file = sys.argv[2]
         if not os.path.isabs(blend_file):
             blend_file = quoteString(os.path.join(os.getcwd(), blend_file))
-            controller.compileBlenderFileModule(blend_file)
-            arguments['blender-file'] = blend_file
+        controller.compileBlenderFileModule(blend_file)
+        arguments['blender-file'] = blend_file
     except IndexError:
         if arguments['command'] == 'start':
             raise
