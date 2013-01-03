@@ -48,6 +48,7 @@ config_path              = os.path.join(blender_cave_path, 'configurations')
 all_config_file          = 'dual.xml'
 alone_config_file        = 'all.xml'
 #arguments['python_path'] = os.path.join(os.path.expanduser('~'), 'local', 'python')
+# blenderplayer_path       = # Under Mac OS X, you should have to set this variable to the path of blenderplayer binary file
 
 arguments['verbosity']      = 'debug'
 arguments['clear_previous'] = True
