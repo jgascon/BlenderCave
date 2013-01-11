@@ -35,8 +35,7 @@
 ##
 
 import time
-import bge.render
-import bge.logic
+import bge
 import blf
 import blender_cave.base
 import os
@@ -121,7 +120,7 @@ class Splash(blender_cave.base.Base):
         if self.isRunning():
             bge.logic.getCurrentScene().post_draw.remove(self._run)
 
-    def _draw(self, text, line):
+    def _draw_text(self, text, line):
         blf.size(self._font_id, 100, 100)
         dimensions = blf.dimensions(self._font_id, text)
         scale = 90 * self._width / dimensions[0]
@@ -129,14 +128,11 @@ class Splash(blender_cave.base.Base):
         blf.position(self._font_id, 0.05 * self._width, (line + 1) * self._height/6.0, 0)
         blf.draw(self._font_id, text)
 
-    def _run(self):
-        self._run_new()
-
     def _draw_ecg(self, index, width, shift):
         index %= self._total_size
         glVertex2f( shift + width * index / self._total_size, self._height * self._ecg_values[int(index) % self._ecg_values_size] / 12.0)
 
-    def _run_new(self):
+    def _run(self):
         self._width = bge.render.getWindowWidth()
         self._height = bge.render.getWindowHeight()
 
@@ -200,11 +196,11 @@ class Splash(blender_cave.base.Base):
                 glDisable(GL_TEXTURE_2D)
             else:
                 glColor4f(1.0, 0.3, 0.3, 1.0)
-                self._draw("Blender CAVE", 3)
+                self._draw_text("Blender CAVE", 3)
 
         # BLF drawing routine
         glColor4f(0.3, 0.3, 1.0, 1.0)
-        self._draw(self._message, 1)
+        self._draw_text(self._message, 1)
 
         line_width = 10.0
         width = 0.9 * self._width

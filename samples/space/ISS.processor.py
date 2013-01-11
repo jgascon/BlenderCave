@@ -33,37 +33,57 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
+import blender_cave.processor
+import blender_cave.vrpn.head_controlled_navigation as hc_nav
 import blender_cave
-import blender_cave.blender_file_script
+import bge
+import mathutils
+import math
+import sys
+import copy
 
-class Configure(blender_cave.blender_file_script.Configure):
-    def __init__(self, parent, attrs, name=''):
-        super(Configure, self).__init__(parent, attrs, name)
-        pass
+class Configure(blender_cave.processor.Configure):
+    def __init__(self, parent, attrs):
+        super(Configure, self).__init__(parent, attrs)
 
-class Processor(blender_cave.blender_file_script.Main):
+class Processor(blender_cave.processor.Processor):
     def __init__(self, parent, configuration):
         super(Processor, self).__init__(parent, configuration)
-        self._usersID = {}
-
-    def null_processor(self, info, data):
-        return
-
-    def setAsObjectToSynchronize(self, name):
-        self.getBlenderCave().addObjectToSynchronize(self, name)
-
-    def synchronizerPack(self):
-        return b''
-
-    def synchronizerUnpack(self, buffer):
-        return
+        self._scene = bge.logic.getCurrentScene()
+        self._navigator = hc_nav.HCNav(parent)
+        self._navigator.setPositionFactors(1, 20.0, 1.0)
+        self._quit = 0
 
     def user_position(self, info):
+        super(Processor, self).user_position(info)
         for user in info['users']:
-            user.setPosition(info['matrix'])
-        
-    def idle(self):
-        return
+            self._navigator.setHeadLocation(user, info)
 
-    def start(self):
-        return
+    def reset(self, users = None):
+        if not users is None:
+            for user in users:
+                self._navigator.update(self._navigator.RESET, user)
+                user.resetVehiclePosition()
+
+    def buttons(self, info):
+        if (info['button'] == 0) and (info['state'] == 1):
+            self._navigator.update(self._navigator.CALIBRATE)
+        if (info['button'] == 1) and (info['state'] == 1):
+            self._navigator.update(self._navigator.TOGGLE)
+        if (info['button'] == 2) and (info['state'] == 1):
+            self.reset(info['users'])
+
+    def texts(self, info):
+        cmd = None
+        if info['message'] == 'COMPUTER CALIBRATION':
+            cmd = self._navigator.CALIBRATE
+        elif info['message'] == 'COMPUTER NAVIGATION':
+            cmd = self._navigator.TOGGLE
+        elif info['message'] == 'COMPUTER HOME':
+            self.reset(info['users'])
+        elif info['message'] == 'COMPUTER QUIT':
+            self.getBlenderCave().quit("because user asked !")
+
+        if cmd is not None:
+            for user in info['users']:
+                self._navigator.update(cmd, user)

@@ -53,9 +53,13 @@ class Configure (Common):
     def __init__(self, reason):
         super(Configure, self).__init__(reason)
 
-class Broadcaster (Common):
+class Synchronizer (Common):
     def __init__(self, reason):
         super(Synchronizer, self).__init__(reason)
+
+class Broadcaster (Common):
+    def __init__(self, reason):
+        super(Broadcaster, self).__init__(reason)
 
 class Controller (Common):
     def __init__(self, reason):
@@ -85,13 +89,21 @@ class VRPN (Common):
     def __init__(self, reason):
         super(VRPN, self).__init__(reason)
 
-class VRPN_Invalid_Device(Common):
+class Processor_Invalid_Device(Common):
     def __init__(self, reason):
-        super(VRPN_Invalid_Device, self).__init__(reason)
+        super(Processor_Invalid_Device, self).__init__(reason)
 
 class OSC_Invalid_Type(Common):
     def __init__(self, reason):
         super(OSC_Invalid_Type, self).__init__(reason)
+
+class OSC_Invalid_Object(Common):
+    def __init__(self, reason):
+        super(OSC_Invalid_Object, self).__init__(reason)
+
+class OSC_Invalid_Already_Created(Common):
+    def __init__(self, reason):
+        super(OSC_Invalid_Already_Created, self).__init__(reason)
 
 class Reload(Common):
     def __init__(self, reason):

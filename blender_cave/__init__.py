@@ -66,6 +66,8 @@ class Main:
             # Complete the environment checking with the logger correctly defined
             environ.processRemainingConfiguration()
 
+            self._loadProcessorModule()
+
             # Load the configuration file
             from . import configure
             global_configuration = configure.Configure(self, environ)
@@ -101,13 +103,21 @@ class Main:
             from . import screen
             self._screen = screen.Screen(self, configuration['screen'])
 
-            # Configure VRPN: module to get the interactions
-            from . import vrpn
-            self._vrpn = vrpn.VRPN(self, configuration['vrpn'])
-
+            # Order is important : OSC must exists before to processor, that must exists before VRPN !
             # Configure OSC: module to send the position of the objects and the users to the spatialized sound rendering system
             from . import osc
             self._osc = osc.OSC(self, configuration['osc'])
+
+            # Configure the processor
+            self._processor = self._processorModule.Processor(self, configuration['processor'])
+
+            # Configure CONSOLE: module to get the interactions
+            from . import console
+            self._console = console.Console(self)
+
+            # Configure VRPN: module to get the interactions
+            from . import vrpn
+            self._vrpn = vrpn.VRPN(self, configuration['vrpn'])
 
             # Configure splash screen: the electocardiogram that is displayed when waiting for every connexions
             from . import splash
@@ -120,6 +130,9 @@ class Main:
                 self._splash.start()
 
             if self.isMaster():
+                if self.getProcessor() is not None:
+                    self.getProcessor().start()
+                self._console.start();
                 self._vrpn.start()
                 self._osc.start()
 
@@ -195,6 +208,10 @@ class Main:
         The interaction (VRPN and OSC) are activated by this method. So you should call it once per frame from blender file"""
         if (self._initiated) and (self.isMaster()) and (self.isNetworkReady()):
             try:
+                if self.getProcessor() is not None:
+                    self.getProcessor().run()
+                if self.isMaster(): 
+                    self._console.run()
                 self._vrpn.run()
                 if self.isMaster(): 
                     self._osc.run()
@@ -243,9 +260,20 @@ class Main:
         else:
             self._logger.debug(traceback.format_exc())
 
+    def getProcessor(self):
+        if hasattr(self, '_processor'):
+            return self._processor
+        return None
+
+    def getProcessorModule(self):
+        if hasattr(self, '_processorModule'):
+            return self._processorModule
+        return None
+
     def _quitByNetwork(self, reason):
         """Internal quit: do not use"""
         self._logger.info('Quit: ' + reason)
+        self._osc.reset()
         del(self._reload_backupper)
         self._stopAll()
         bge.logic.endGame()
@@ -266,6 +294,23 @@ class Main:
         self._splash.stop()
         self.getLogger().info("Start the simulation !")
 
+    def _loadProcessorModule(self):
+        blender_file_name = bge.logic.getCurrentBlendName()
+        module_path = os.path.dirname(blender_file_name)
+        specific_name, ext = os.path.splitext(os.path.basename(blender_file_name))
+        module_name = specific_name + '.processor'
+        try:
+            import imp
+            (file, file_name, data) = imp.find_module(module_name, [module_path])
+        except:
+            from . import processor
+            self._processorModule = processor
+            self.getLogger().warning('Cannot import "' + module_name + '" module')
+            self._processorModule._name = 'default_processor'
+        else:
+            self._processorModule = imp.load_module(specific_name, file, file_name, data)
+            self.getLogger().info('Loading  "' + file_name + '" as main processor')
+            self._processorModule._name = specific_name
 
 # If we cannot import BGE, then we must not construct Blender CAVE !
 try:

@@ -36,11 +36,12 @@
 import bge
 import copy
 import datetime
-from . import base
+import blender_cave.device
 
-class LocalDevices(base.Sender):
-    def __init__(self, parent, configuration):
-        super(LocalDevices, self).__init__(parent, configuration)
+class Console(blender_cave.device.Sender):
+    def __init__(self, parent):
+        configuration = {'processor_method': 'console'}
+        super(Console, self).__init__(parent, configuration)
         # Backup the data
         self._keyboard = copy.copy(bge.logic.keyboard.events)
         self._mouse_events = copy.copy(bge.logic.mouse.events)

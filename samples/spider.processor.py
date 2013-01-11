@@ -33,7 +33,7 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
-import blender_cave.vrpn.processor as processor
+import blender_cave.processor
 import blender_cave.vrpn.head_controlled_navigation as hc_nav
 import blender_cave
 import bge
@@ -42,11 +42,11 @@ import math
 import sys
 import copy
 
-class Configure(processor.Configure):
+class Configure(blender_cave.processor.Configure):
     def __init__(self, parent, attrs):
         super(Configure, self).__init__(parent, attrs, 'Mountain')
 
-class Processor(processor.Processor):
+class Processor(blender_cave.processor.Processor):
     def __init__(self, parent, configuration):
         super(Processor, self).__init__(parent, configuration)
         self._scene = bge.logic.getCurrentScene()
@@ -147,6 +147,3 @@ class Processor(processor.Processor):
         if cmd is not None:
             for user in info['users']:
                 self._navigator.update(cmd, user)
-
-    def local_devices(self, info):
-        print("local device : ", info)

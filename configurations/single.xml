@@ -1,0 +1,39 @@
+<blender_cave name="EVE" synchroPort="2731" synchroAddress="225.0.0.37">
+
+  <user name='user A' eye_separation='0.06'>
+    <default_position>0.0, 0.0, 0.0</default_position>
+  </user>
+
+  <computer name="*">
+
+    <screen name="console">
+      <graphic_buffer name="alone" user='user A' eye="middle"/>
+      <corner name="topRightCorner">1.0, 1.0, -1.0</corner>
+      <corner name="topLeftCorner">-1.0, 1.0, -1.0</corner>
+      <corner name="bottomRightCorner">1.0, -1.0, -1.0</corner>
+    </screen>
+
+  </computer>
+
+  <processor>
+    <osc server='localhost' port='3819' configuration='ambisonic EVE'/>
+    <vrpn>
+      <tracker name="Tracker0" host="localhost">
+	<sensor id="0" processor_method='tracker_1'>
+	  <transformation>
+	    <translate x='0.0' y='-0.5' z='-0.5' />
+	  </transformation>
+	</sensor>
+	<sensor id="1" processor_method='user_position' data='user A'/>
+	<sensor id="2" processor_method='user_position' data='user B'/>
+	<sensor id="3" processor_method='tracker_2'/>
+      </tracker>
+      <analog name="Input0" host="localhost" processor_method="movements"/>
+      <button name="Input0" host="localhost" processor_method="buttons"/>
+    </vrpn>
+    <specific name="Mountain"/>
+    <specific name="Bis"/>
+  </processor>
+
+
+</blender_cave>

@@ -1,5 +1,4 @@
-# -*- coding: iso-8859-1 -*-
-## Copyright © LIMSI-CNRS (2011)
+## Copyright Â© LIMSI-CNRS (2011)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -35,32 +34,45 @@
 ## 
 
 import blender_cave.base
-import blender_cave.configure.base
-import os
-import imp
+import blender_cave.exceptions
+import struct
 
-class Configure(blender_cave.configure.base.Base):
-    def __init__(self, parent, attrs, name=''):
-        super(Configure, self).__init__(parent, attrs, name)
+def getString(value):
+    result = bytes(value, 'latin1')
+    for i in range(0, 4 - (len(result) % 4)):
+        result += b'\x00'
+    return result
+    
 
-class Main(blender_cave.base.Base):
-    def __init__(self, parent, configuration):
-        super(Main, self).__init__(parent)
+class MSG(blender_cave.base.Base):
+    def __init__(self, parent, command):
+        super(MSG, self).__init__(parent)
+        self._command   = command
+        self._arguments = b''
+        self._types     = ','
 
-def getBlenderFileModule(blender_file_name, doimport):
-    if 'blender_file_module' in globals():
-        return globals()['blender_file_module']
-    module_path = os.path.dirname(blender_file_name)
-    specific_name, ext = os.path.splitext(os.path.basename(blender_file_name))
-    module_name = '_' + specific_name
-    module = None
-    file_name = None
-    try:
-        (file, file_name, data) = imp.find_module(module_name, [module_path])
-    except:
-        pass
-    else:
-        if doimport:
-            module = imp.load_module(specific_name, file, file_name, data)
-    globals()['blender_file_module'] = (module, file_name, module_name, specific_name)
-    return globals()['blender_file_module']
+    def append(self, argument):
+        if isinstance(argument,dict):
+            argument = list(argument.items())
+        if hasattr(argument, '__iter__') and not type(argument) in (str,bytes):
+            for arg in argument:
+                self.append(arg)
+            return
+        
+        if type(argument) in [float]:
+            self._arguments += struct.pack(">f", float(argument))
+            self._types     += 'f'
+        elif type(argument) in [int]:
+            self._arguments += struct.pack(">i", int(argument))
+            self._types     += 'i'
+        elif type(argument) in [bool]:
+            self._arguments += struct.pack(">i", int(argument))
+            self._types     += 'i'
+        elif type(argument) in [str]:
+            self._arguments += getString(argument)
+            self._types     += 's'
+        else:
+            raise blender_cave.exceptions.OSC_Invalid_Type(str(type(argument)) + ' unknown type')
+
+    def getBinary(self):
+        return getString(self._command) + getString(self._types) + self._arguments

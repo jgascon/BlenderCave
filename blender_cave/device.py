@@ -33,21 +33,12 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
-import blender_cave.base
-import blender_cave.exceptions
+from . import base
+from . import exceptions
 
-class Base(blender_cave.base.Base):
+class Base(base.Base):
     def __init__(self, parent, configuration):
         super(Base, self).__init__(parent)
-        self._vrpn = self.getParent()
-        try:
-            while not isinstance(self._vrpn, blender_cave.vrpn.VRPN):
-                self._vrpn = self._vrpn.getParent()
-        except AttributeError:
-            pass
-
-    def getVRPN(self):
-        return self._vrpn
 
 class Receiver(Base):
     def __init__(self, main, configuration):
@@ -65,8 +56,8 @@ class Sender(Base):
     def __init__(self, main, configuration):
         super(Sender, self).__init__(main, configuration)
         self._processor_method = configuration['processor_method']
-        if not hasattr(self.getVRPN().getProcessor(), self._processor_method):
-            raise blender_cave.exceptions.VRPN_Invalid_Device('VRPN processor does not have "' + self._processor_method + '" method')
+        if not hasattr(self.getBlenderCave().getProcessor(), self._processor_method):
+            raise exceptions.Processor_Invalid_Device('processor does not have "' + self._processor_method + '" method')
         try:
             self._data = configuration['data']
         except KeyError:
@@ -79,10 +70,10 @@ class Sender(Base):
         else:
             try:
                 self._users.append(self.getBlenderCave().getUserByName(users))
-            except blender_cave.exceptions.User:
-                raise blender_cave.exceptions.VRPN_Invalid_Device('VRPN user not found for processor "' + configuration['processor_method'] + '": ' + users)
+            except exceptions.User:
+                raise exceptions.Processor_Invalid_Device('user not found for processor "' + configuration['processor_method'] + '": ' + users)
 
     def process(self, info):
         info['users'] = self._users
         info['data'] = self._data
-        getattr(self.getVRPN().getProcessor(), self._processor_method)(info)
+        getattr(self.getBlenderCave().getProcessor(), self._processor_method)(info)

@@ -33,7 +33,7 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
-import blender_cave.vrpn.processor as processor
+import blender_cave.processor
 import blender_cave.vrpn.head_controlled_navigation as hc_nav
 import blender_cave
 import bge
@@ -42,27 +42,25 @@ import math
 import sys
 import copy
 
-OSC_Objects={'Plane.011' : {
-    'position' : [0.0, 0.0, 0.0],
-    'sound'    : 'trumpet.wav',
-    'id' : 52
-    }}
-
-class Configure(processor.Configure):
+class Configure(blender_cave.processor.Configure):
     def __init__(self, parent, attrs):
-        super(Configure, self).__init__(parent, attrs, 'Mountain')
+        super(Configure, self).__init__(parent, attrs)
 
-class Processor(processor.Processor):
+class Processor(blender_cave.processor.Processor):
     def __init__(self, parent, configuration):
         super(Processor, self).__init__(parent, configuration)
         self._scene = bge.logic.getCurrentScene()
         self._navigator = hc_nav.HCNav(parent)
         self._navigator.setPositionFactors(1, 20.0, 1.0)
 
+        # Sample of how to add sound to the "Plane.011" object
+        myPlane = bge.logic.getCurrentScene().objects['Plane.011']
+        self.getBlenderCave().getOSC().addObject(myPlane, {'sound'    : 'trumpet.wav'})
+        myPlane['BlenderCave_OSC'].mute(self.getBlenderCave().getOSC().stateToggle)
+        myPlane['BlenderCave_OSC'].volume('%50')
+
     def start(self):
         return
-        myPlane = bge.logic.getCurrentScene().objects['Plane.011']
-        myPlane['BlenderCave_OSC'].mute(False)
 
     def user_position(self, info):
         super(Processor, self).user_position(info)
@@ -98,5 +96,5 @@ class Processor(processor.Processor):
             for user in info['users']:
                 self._navigator.update(cmd, user)
 
-    def local_devices(self, info):
-        print("local device : ", info)
+    def console(self, info):
+        print("console informations: ", info)

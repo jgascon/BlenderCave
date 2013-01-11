@@ -1,4 +1,5 @@
-## Copyright Â© LIMSI-CNRS (2011)
+# -*- coding: iso-8859-1 -*-
+## Copyright © LIMSI-CNRS (2011)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -33,14 +34,37 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
-from . import base
+import blender_cave.base
+import blender_cave.configure.base
 
-class LocalDevices(base.Sender):
+class Configure(blender_cave.configure.base.Base):
 
-    def __init__(self, parent, attrs):
-        super(LocalDevices, self).__init__(parent, attrs, 'local_devices')
+    def __init__(self, parent, attrs, name=''):
+        super(Configure, self).__init__(parent, attrs, name)
 
-    def getLocalConfiguration(self):
-        localConfiguration = {}
-        super(LocalDevices, self).getLocalConfiguration(localConfiguration)
-        return localConfiguration
+class Processor(blender_cave.base.Base):
+
+    def __init__(self, parent, configuration):
+        super(Processor, self).__init__(parent)
+
+    def setAsObjectToSynchronize(self, name):
+        self.getBlenderCave().addObjectToSynchronize(self, name)
+
+    def synchronizerPack(self):
+        return b''
+
+    def synchronizerUnpack(self, buffer):
+        return
+
+    def start(self):
+        return
+
+    def run(self):
+        return
+
+    def user_position(self, info):
+        for user in info['users']:
+            user.setPosition(info['matrix'])
+
+    def console(self, info):
+        return
