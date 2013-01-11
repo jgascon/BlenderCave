@@ -46,7 +46,7 @@ class ItemProperty():
 
         item_type = self._item.__class__.__name__
         if (item_type in self._synchronizer._itemsIDs) == False:
-            raise blender_cave.exceptions.Synchronizer("Error : undefined object (" + item_type + ") !")
+            raise blender_cave.exceptions.Synchronizer("Error : undefined object (" + item_type + " from " + parent.__class__.__name__ + ")!")
         self._item_type_id = self._synchronizer._itemsIDs[item_type]
         item_definition = self._synchronizer._itemsDefinitions[self._item_type_id]
         self.attributes = item_definition.attributes

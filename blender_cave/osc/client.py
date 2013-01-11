@@ -35,6 +35,8 @@
 
 import blender_cave.base
 import socket
+import math
+import struct
 from blender_cave.buffer import Buffer
 
 class Client(blender_cave.base.Base):
@@ -46,6 +48,4 @@ class Client(blender_cave.base.Base):
         self._socket.connect((host, port))
 
     def send(self, msg):
-        self.getLogger().debug(msg)
-        #return
-        self._socket.sendall(bytes(msg, 'UTF-8'))
+        self._socket.sendall(msg.getBinary())

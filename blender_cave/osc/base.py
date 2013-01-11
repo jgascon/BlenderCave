@@ -35,6 +35,7 @@
 
 import blender_cave.base
 import blender_cave.exceptions
+from . import msg
 import mathutils
 
 class Base(blender_cave.base.Base):
@@ -43,61 +44,93 @@ class Base(blender_cave.base.Base):
         self._name     = name
         self._OSC_ID   = OSC_ID
         self._commands = {
-            'start':  { 'type': 'bool'},
+            'start':  { 'type': 'state'},
             'volume': { 'type': 'vol' },
-            'mute':   { 'type': 'bool'}
+            'mute':   { 'type': 'state'}
             }
+        self._commands_order = ['volume', 'start', 'mute']
 
     def run(self):
-        for name, attribut in self._commands.items():
+        for name in self._commands_order:
+            attribut = self._commands[name]
             if attribut['update']:
-                cmd = '/' + self._name + ' '
+                cmd = msg.MSG(self, '/' + self._name)
                 if self._OSC_ID is not None:
-                    cmd += str(self._OSC_ID) + ' '
-                cmd += attribut['cmd'] + ' '
-                cmd += attribut['value']
+                    cmd.append(self._OSC_ID)
+                cmd.append(attribut['cmd'])
+                if attribut['value'] is not None:
+                    cmd.append(attribut['value'])
                 self.getParent().sendCommand(cmd)
                 attribut['update'] = False
 
-    def _command(self, attribut, value):
-        new_value = getattr(self, attribut['method'])(value)
-        if attribut['value'] != new_value:
-            attribut['value'] = new_value
-            attribut['update'] = True
+    def _command_none(self, attribut):
+        attribut['update'] = True
 
-    def _prepare_bool(self, value):
+    def _command_bool(self, attribut, value):
         if isinstance(value, bool):
             if value == True:
-                return '1'
-            return '0'
+                value = 1
+            else:
+                value = 0
+            if attribut['value'] != value:
+                attribut['value'] = value
+                attribut['update'] = True
+            return
         raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not a boolean')
 
-    def _prepare_int(self, value):
+    def _command_state(self, attribut, value):
+        if value is None:
+            attribut['value'] = -1
+            attribut['update'] = True
+            return
+        if isinstance(value, bool):
+            if value == True:
+                value = 1
+            else:
+                value = 0
+            if attribut['value'] != value:
+                attribut['value'] = value
+                attribut['update'] = True
+            return
+        raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not a valid state')
+
+    def _command_int(self, attribut, value):
         if isinstance(value, int):
-            return str(value)
+            if attribut['value'] != value:
+                attribut['value'] = value
+                attribut['update'] = True
+            return
         raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not an integer')
 
-    def _prepare_matrix(self, value):
+    def _command_matrix(self, attribut, value):
         if isinstance(value, mathutils.Matrix):
-            result  = str(value[0][0]) + ' ' + str(value[1][0]) + ' ' + str(value[2][0]) + ' ' + str(value[3][0]) + ' '
-            result += str(value[0][1]) + ' ' + str(value[1][1]) + ' ' + str(value[2][1]) + ' ' + str(value[3][1]) + ' '
-            result += str(value[0][2]) + ' ' + str(value[1][2]) + ' ' + str(value[2][2]) + ' ' + str(value[3][2]) + ' '
-            result += str(value[0][3]) + ' ' + str(value[1][3]) + ' ' + str(value[2][3]) + ' ' + str(value[3][3])
-            return result
+            value = [value[0][0], value[1][0], value[2][0], value[3][0],
+                     value[0][1], value[1][1], value[2][1], value[3][1],
+                     value[0][2], value[1][2], value[2][2], value[3][2],
+                     value[0][3], value[1][3], value[2][3], value[3][3]]
+            if attribut['value'] != value:
+                attribut['value'] = value
+                attribut['update'] = True
+            return
         raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not a matrix')
 
-    def _prepare_string(self, value):
+    def _command_string(self, attribut, value):
         if isinstance(value, str):
-            return value
+            if attribut['value'] != value:
+                attribut['value'] = value
+                attribut['update'] = True
+            return
         raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not a string')
 
-    def _prepare_vol(self, value):
+    def _command_vol(self, attribut, value):
         if isinstance(value, str):
             if value[0] == '%' or value[0] == '+' or value[0] == '-':
                 try:
-                    int(value[1])
                     value = value[0] + str(int(value[1:]))
-                    return value
+                    if attribut['value'] != value or value[0] == '+' or value[0] == '-':
+                        attribut['value'] = value
+                        attribut['update'] = True
+                    return
                 except:
                     pass
         raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not a valid volume (%32, +5, -17)')
@@ -107,7 +140,17 @@ class Base(blender_cave.base.Base):
         for name, attribut in self._commands.items():
             if 'cmd' not in attribut:
                 attribut['cmd'] = name
-            attribut['update'] = False
-            attribut['value']  = ''
-            attribut['method'] = '_prepare_' + attribut['type']
-            setattr(self, name, MethodType(getattr(self, '_command'), attribut))
+            setattr(self, name, MethodType(getattr(self, '_command_' + attribut['type']), attribut))
+            attribut['update'] = True
+            if 'value' not in attribut:
+                if attribut['type'] == 'none':
+                    attribut['value']  = None
+                    attribut['update'] = False
+                elif attribut['type'] == 'int':
+                    attribut['value']  = 0
+                elif attribut['type'] == 'vol':
+                    attribut['value']  = '%50'
+                elif (attribut['type'] == 'bool') or (attribut['type'] == 'state'):
+                    attribut['value']  = 0
+                else:
+                    attribut['value']  = ''

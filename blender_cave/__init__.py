@@ -273,7 +273,7 @@ class Main:
     def _quitByNetwork(self, reason):
         """Internal quit: do not use"""
         self._logger.info('Quit: ' + reason)
-        self._osc.reset()
+        self._osc.getGlobal().reset()
         del(self._reload_backupper)
         self._stopAll()
         bge.logic.endGame()

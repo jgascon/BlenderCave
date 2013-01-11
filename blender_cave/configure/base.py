@@ -151,4 +151,3 @@ class Base(blender_cave.base.Base, xml.sax.handler.ContentHandler):
                 if component in vector:
                     setattr(result, component, float(vector[component]))
             return result
-

@@ -39,7 +39,6 @@ import os
 import imp
 import blender_cave.configure.base
 import blender_cave.vrpn
-import blender_cave.blender_file_script
 
 class VRPN(blender_cave.configure.base.Base):
 
@@ -50,29 +49,6 @@ class VRPN(blender_cave.configure.base.Base):
         if blender_cave.vrpn._VRPN_NOT_AVAILABLE:
             self.getLogger().warning('No VRPN Available !')
             return
-
-        from blender_cave.vrpn import processor as default_processor
-
-        specific_processor, file_name, module_name, specific_name = blender_cave.blender_file_script.getBlenderFileModule(bge.logic.getCurrentBlendName(), True)
-        if specific_processor is not None:
-            if (hasattr(specific_processor, 'Processor')) and (issubclass(specific_processor.Processor, default_processor.Processor)):
-                self._processor_module = specific_processor
-            else:
-                self._processor_module = default_processor
-        else:
-            self._processor_module = default_processor
-
-        if (hasattr(self._processor_module, 'Configure')) and (issubclass(self._processor_module.Configure, default_processor.Configure)):
-            self._processor_class = self._processor_module.Configure
-        else:
-            self._processor_class = default_processor.Configure
-
-        if self._processor_module == default_processor:
-            self.getLogger().warning('Cannot import "' + module_name + '" module')
-            self._processor_configure_name = 'default_processor'
-        else:
-            self.getLogger().info('Loading  "' + file_name + '" as vrpn processor')
-            self._processor_configure_name = specific_name
         self._available = True
 
     def startElement(self, name, attrs):
@@ -84,8 +60,6 @@ class VRPN(blender_cave.configure.base.Base):
                 self._floor = self.getVector(attrs)
             except KeyError:
                 self.raise_error('Floor must have a value !')
-        if name == self._processor_configure_name:
-            child = self._processor_class(self, attrs)
         if name == 'tracker':
             from . import tracker
             child = tracker.Tracker(self, attrs)
@@ -98,12 +72,9 @@ class VRPN(blender_cave.configure.base.Base):
         if name == 'text':
             from . import text
             child = text.Text(self, attrs)
-        if name == 'local_devices':
-            from . import local_devices
-            child = local_devices.LocalDevices(self, attrs)
         return self.addChild(child)
 
-    def getLocalConfiguration(self):
+    def getConfiguration(self):
         if not self._available:
             return {}
         localConfiguration = {'tracker' : [], 'button' : [], 'analog' : [], 'text' : [], 'local_devices' : []}
@@ -113,9 +84,6 @@ class VRPN(blender_cave.configure.base.Base):
                     localConfiguration[deviceType].append(self._children[deviceType][deviceName].getLocalConfiguration())
             except KeyError:
                 pass
-
-        localConfiguration['module']                  = self._processor_module
-        localConfiguration['processor_configuration'] = {}
 
         try:
             localConfiguration['floor'] = self._floor

@@ -48,18 +48,21 @@ class OSC(blender_cave.base.Base):
 
         self._valid = False
 
-        if ('server' not in configuration) or ('port' not in configuration):
+        self.stateToggle = None
+
+        if ('host' not in configuration) or ('port' not in configuration):
             return
 
-        self._global = base.Base(self, 'global', None)
+        self._global = base.Base(self, 'global', None) 
 
-        global_attributs = ['warmth', 'brightness', 'presence',
-                            'reverb_volume', 'running_reverb',
-                            'late_reverb', 'envelop', 'heavyness',
-                            'livelyness']
+        self._global._commands['configuration'] = { 'type'  : 'string' }
+        self._global._commands['reset']         = { 'type'  : 'none' }
 
-        for attribut in global_attributs:
-            self._global._commands[attribut] = { 'type': 'int'}
+        if 'configuration' in configuration:
+            self._global._commands['configuration']['value'] = configuration['configuration']
+
+        self._global._commands_order = ['reset', 'configuration', 'volume', 'start', 'mute']
+
         self._global.define_commands()
 
         if 'room' in configuration:
@@ -67,28 +70,33 @@ class OSC(blender_cave.base.Base):
                 if attribut in configuration['room']:
                     getattr(self._global, attribut)(configuration['room'][attribut])
 
-        specific_processor, file_name, module_name, specific_name = blender_cave.blender_file_script.getBlenderFileModule(bge.logic.getCurrentBlendName(), True)
-        if not hasattr(specific_processor, 'OSC_Objects'):
-            self._available = False
-            return
-        self._objects   = {}
-        for name, attributs in specific_processor.OSC_Objects.items():
-            try:
-                self._objects[name] = object.Object(self, name, attributs, len(self._objects))
-            except:
-                self.log_traceback(False)
+        self._objects = {}
 
         self._users = []
         for _user in self.getBlenderCave().getAllUsers():
             try:
-                self._users.append(user.User(self, _user, len(self._users)))
+                self._users.append(user.User(self, _user, len(self._users) + 1))
             except:
                 self.log_traceback(False)
 
-        self.getLogger().info('Connection to OSC server : ' + configuration['server'] + ':' + str(configuration['port']))
-        self._client = client.Client(self, configuration['server'], configuration['port'])
+        self.getLogger().info('Connection to OSC host : ' + configuration['host'] + ':' + str(configuration['port']))
+        self._client = client.Client(self, configuration['host'], configuration['port'])
         self._valid = True
 
+    def reset(self):
+        if self._valid:
+            cmd = msg.MSG(self, '/global')
+            cmd.append('reset')
+            self.sendCommand(cmd)        
+
+    def addObject(self, obj, configuration):
+        if self._valid:
+            try:
+                obj = object.Object(self, obj, configuration)
+                self._objects[obj.getName()] = obj
+            except:
+                self.log_traceback(False)
+                 
     def start(self):
         pass
 
@@ -102,7 +110,7 @@ class OSC(blender_cave.base.Base):
                     user.run()
             except socket.error:
                 self.getBlenderCave().log_traceback(False)
-                self.getLogger().warning('Cannot send command to OSC server => stop OSC !')
+                self.getLogger().warning('Cannot send command to OSC host => stop OSC !')
                 self._valid = False
 
     def sendCommand(self, cmd):

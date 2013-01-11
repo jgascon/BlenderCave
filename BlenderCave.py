@@ -43,21 +43,15 @@ import time
 
 arguments = {}
 
-blender_cave_path        = os.path.join(os.path.expanduser('~'), 'local', 'blenderCave')
-config_path              = os.path.join(blender_cave_path, 'configurations')
-all_config_file          = 'dual.xml'
-alone_config_file        = 'all.xml'
-#arguments['python_path'] = os.path.join(os.path.expanduser('~'), 'local', 'python')
-# blenderplayer_path       = # Under Mac OS X, you should have to set this variable to the path of blenderplayer binary file
-
-arguments['verbosity']      = 'debug'
-arguments['clear_previous'] = True
-arguments['log-path']       = os.path.join(blender_cave_path, 'logs')
-
-import getpass
-temp_path = os.path.join(tempfile.gettempdir(), 'blender_cave-'+getpass.getuser())
-
-# Below, you should not have to modify anything ...
+if 'BLENDER_CAVE_GLOBAL_CONFIGURATION' in os.environ:
+    conf_file = os.environ['BLENDER_CAVE_GLOBAL_CONFIGURATION']
+else:
+    conf_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'conf.py')
+try:
+    exec(open(conf_file).read())
+except IOError:
+    print('Invalid global BlenderCave configuration file: you should define BLENDER_CAVE_GLOBAL_CONFIGURATION environment variable to point to the correct conf.py file')
+    sys.exit()
 
 if sys.argv[1] == 'stop' or sys.argv[1] == 'start':
     arguments['config-file'] = os.path.join(config_path, all_config_file)

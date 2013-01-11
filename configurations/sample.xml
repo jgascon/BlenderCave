@@ -74,43 +74,59 @@
 
   </computer>
 
-  <!--
-      For VRPN management, Blender Cave will try to load the module with the same name than the current .blend file prefixed by vrpn_ (ie : bpcem_playground_CAVE.blend => vrpn_bpcem_playground_CAVE.py)
-      See samples for its use
-  -->
-  <vrpn>
-    <tracker name="Tracker0" host="localhost" scale='1.0'>
-      <!-- Le paramètre "scale" permet de changer l'échelle globale du tracker (certains utilisent le milimètre ...) -->
+  <!-- The processor contains everything concerning the interactions. It is the python file concerning the current scene. For instance, for Mountain.blend, its processor is _Mountain.py.  -->
+  <processor>
 
-      <transformation>
-	<!--
-	    Here goes transformation for all sensors
-	-->
-	<translate x='-0.10592269897460938' y='-0.59547358751297' z='1.6200547218322754' />
-	<!--
-	    But can also be : 
-	    <scale factor='5.0' x='1.0' y='0.0' z='0.0' />
-	    Where factor is the factor. x, y, z represents the axis of the scale (can be omitted)
+    <specific name='Mountain'>
+      <!-- the part of the configuration file concerning the "Mountain.blend" scene. -->
+    </specific>
+    <specific name='spider'>
+      <!-- the part of the configuration file concerning the "spider.blend" scene. -->
+    </specific>
 
-            <rotare angle='3.1415926' x='1.0' y='0.0' z='0.0' />
-	    Where angle is the angle and x, y, z represents the axis of the rotation
-
-            You can add as many lines as necessary
-	-->
-      </transformation>
+    <osc host='localhost' port='3819' configuration='ambisonic EVE' /> <!-- Which connexion to the OSC (Open Sound Control) host ?
+    configuration parameter is send to the OSC host -->
 
 
-      <sensor id="0" processor_method='user_position' data='user A'> 
-	<!-- The "user_position" method is inherited from processor.Processor and manage the user position. The user name is the data provided to the method -->
+
+    <!--
+	For VRPN management, Blender Cave will try to load the module with the same name than the current .blend file prefixed by vrpn_ (ie : bpcem_playground_CAVE.blend => vrpn_bpcem_playground_CAVE.py)
+	See samples for its use
+    -->
+    <vrpn>
+      <tracker name="Tracker0" host="localhost" scale='1.0'>
+	<!-- Le paramètre "scale" permet de changer l'échelle globale du tracker (certains utilisent le milimètre ...) -->
+
 	<transformation>
-	  <!-- Same thing for tracker, but for this sensor only -->
+	  <!--
+	      Here goes transformation for all sensors
+	  -->
+	  <translate x='-0.10592269897460938' y='-0.59547358751297' z='1.6200547218322754' />
+	  <!--
+	      But can also be : 
+	      <scale factor='5.0' x='1.0' y='0.0' z='0.0' />
+	      Where factor is the factor. x, y, z represents the axis of the scale (can be omitted)
+	      
+	      <rotare angle='3.1415926' x='1.0' y='0.0' z='0.0' />
+	      Where angle is the angle and x, y, z represents the axis of the rotation
+	      
+	      You can add as many lines as necessary
+	  -->
 	</transformation>
-      </sensor>
-      <sensor id="1" processor_method='tracker_1'/>
-    </tracker>
-    <tracker name="Tracker1" host="localhost" />
-    <analog name="Analog0" host="localhost" processor_method="movements"/>
-    <button name="Button0" host="localhost" processor_method="buttons"/>
-  </vrpn>
+
+
+	<sensor id="0" processor_method='user_position' data='user A'> 
+	  <!-- The "user_position" method is inherited from processor.Processor and manage the user position. The user name is the data provided to the method -->
+	  <transformation>
+	    <!-- Same thing for tracker, but for this sensor only -->
+	  </transformation>
+	</sensor>
+	<sensor id="1" processor_method='tracker_1'/>
+      </tracker>
+      <tracker name="Tracker1" host="localhost" />
+      <analog name="Analog0" host="localhost" processor_method="movements"/>
+      <button name="Button0" host="localhost" processor_method="buttons"/>
+    </vrpn>
+  </processor>
 
 </blender_cave>

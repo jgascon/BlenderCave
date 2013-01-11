@@ -127,6 +127,9 @@ elif options.command == 'start':
     else:
         environment['DISPLAY'] = ":0"
 
+    if sys.platform == "win32":
+        environment['SystemRoot'] = os.path.join('C:',os.sep,'Windows')
+
     command = []
     if options.blender_player is not None:
         command.append(quoteString(options.blender_player))

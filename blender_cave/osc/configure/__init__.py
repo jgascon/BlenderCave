@@ -39,14 +39,16 @@ import os
 import imp
 import blender_cave.configure.base
 import blender_cave.osc
-import blender_cave.blender_file_script
 
 class OSC(blender_cave.configure.base.Base):
     def __init__(self, parent, attrs):
         super(OSC, self).__init__(parent, attrs, 'osc')
-        self._server = attrs['server']
+        self._host = attrs['host']
         self._port   = int(attrs['port'])
-
+        try:
+            self._configuration = attrs['configuration']
+        except KeyError:
+            pass
 
     def startElement(self, name, attrs):
         child = None
@@ -54,10 +56,14 @@ class OSC(blender_cave.configure.base.Base):
             child = Room(self, attrs)
         return self.addChild(child)
 
-    def getLocalConfiguration(self):
-        result = {'server': self._server, 'port': self._port}
+    def getConfiguration(self):
+        result = {'host': self._host, 'port': self._port}
+        try:
+            result['configuration'] = self._configuration
+        except AttributeError:
+            pass
         if 'room' in self._children:
-            result['room'] = self._children['room']['room'].getLocalConfiguration()
+            result['room'] = self._children['room']['room'].getConfiguration()
         return result
 
 class Room(blender_cave.configure.base.Base):
@@ -72,5 +78,5 @@ class Room(blender_cave.configure.base.Base):
             if attribut in attrs:
                 self._attributs[attribut] = int(attrs[attribut])
 
-    def getLocalConfiguration(self):
+    def getConfiguration(self):
         return self._attributs;

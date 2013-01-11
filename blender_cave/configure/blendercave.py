@@ -77,14 +77,10 @@ class BlenderCave(base.Base):
             if name == 'user':
                 from . import user
                 child = user.User(self, attrs)
-            if name == 'vrpn':
-                import blender_cave.vrpn.configure
-                self._vrpn = blender_cave.vrpn.configure.VRPN(self, attrs)
-                child = self._vrpn
-            if name == 'osc':
-                import blender_cave.osc.configure
-                self._osc = blender_cave.osc.configure.OSC(self, attrs)
-                child = self._osc
+            if name == 'processor':
+                from . import processor
+                self._processor = processor.Processor(self, attrs)
+                child = self._processor
         return self.addChild(child)
 
     def display(self, indent):
@@ -100,7 +96,7 @@ class BlenderCave(base.Base):
         localConfiguration['users'] = []
         try:
             for userName in self._children['user']:
-                localConfiguration['users'].append(self._children['user'][userName].getLocalConfiguration())
+                localConfiguration['users'].append(self._children['user'][userName].getConfiguration())
         except KeyError:
             self.raise_error('No user available in the Virtual Environment', False)
 
@@ -131,14 +127,7 @@ class BlenderCave(base.Base):
                                             'screen_id'      : screen._screen_id,
                                             'master_node'    : master_node}
 
-        if hasattr(self, '_vrpn'):
-            localConfiguration['vrpn'] = self._vrpn.getLocalConfiguration()
-        else:
-            localConfiguration['vrpn'] = {}
-
-        if hasattr(self, '_osc'):
-            localConfiguration['osc'] = self._osc.getLocalConfiguration()
-        else:
-            localConfiguration['osc'] = {}
+        if hasattr(self, '_processor'):
+            localConfiguration.update(self._processor.getConfiguration())
 
         return localConfiguration

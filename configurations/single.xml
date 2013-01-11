@@ -16,7 +16,7 @@
   </computer>
 
   <processor>
-    <osc server='localhost' port='3819' configuration='ambisonic EVE'/>
+    <osc host='localhost' port='3819' configuration='ambisonic EVE'/>
     <vrpn>
       <tracker name="Tracker0" host="localhost">
 	<sensor id="0" processor_method='tracker_1'>

@@ -16,20 +16,22 @@
 
   </computer>
 
-  <vrpn>
-    <tracker name="tracking" host="djoba">
-      <sensor id="0" processor_method='tracker_1'>
-	<transformation>
-	  <translate x='0.0' y='-0.5' z='-0.5' />
-	</transformation>
-      </sensor>
-      <sensor id="1" processor_method='user_position' data='user A'/>
-      <sensor id="2" processor_method='user_position' data='user B'/>
-      <sensor id="3" processor_method='tracker_2'/>
-    </tracker>
-    <!-- <analog name="Input0" host="localhost" processor_method="movements"/>
-    <button name="Input0" host="localhost" processor_method="buttons"/>
--->  
-</vrpn>
+  <processor>
+    <vrpn>
+      <tracker name="tracking" host="djoba">
+	<sensor id="0" processor_method='tracker_1'>
+	  <transformation>
+	    <translate x='0.0' y='-0.5' z='-0.5' />
+	  </transformation>
+	</sensor>
+	<sensor id="1" processor_method='user_position' data='user A'/>
+	<sensor id="2" processor_method='user_position' data='user B'/>
+	<sensor id="3" processor_method='tracker_2'/>
+      </tracker>
+      <!-- <analog name="Input0" host="localhost" processor_method="movements"/>
+	   <button name="Input0" host="localhost" processor_method="buttons"/>
+      -->  
+    </vrpn>
+  </console>
 
 </blender_cave>

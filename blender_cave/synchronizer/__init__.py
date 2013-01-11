@@ -73,12 +73,13 @@ class Synchronizer(blender_cave.base.Base):
         self._started = False
 
         self._itemsDefinitions = []
-        Scene = ItemDefinition('KX_Scene', {}, ['objects'])
-        GameObject = ItemDefinition('KX_GameObject', {'KX_Scene' : 'objects'}, [])
-        LightObject = ItemDefinition('KX_LightObject', {'KX_Scene' : 'objects'}, [])
-        Camera = ItemDefinition('KX_Camera', {'KX_Scene' : 'objects'}, [])
+        Scene           = ItemDefinition('KX_Scene', {}, ['objects'])
+        GameObject      = ItemDefinition('KX_GameObject', {'KX_Scene' : 'objects'}, [])
+        LightObject     = ItemDefinition('KX_LightObject', {'KX_Scene' : 'objects'}, [])
+        Camera          = ItemDefinition('KX_Camera', {'KX_Scene' : 'objects'}, [])
+        FontObject      = ItemDefinition('KX_FontObject', {'KX_Scene' : 'objects'}, [])
         #ArmatureObject = ItemDefinition('BL_ArmatureObject', {'KX_Scene' : 'objects'}, [], True)
-        ArmatureObject = ItemDefinition('BL_ArmatureObject', {'KX_Scene' : 'objects'}, ['channels'], True)
+        ArmatureObject  = ItemDefinition('BL_ArmatureObject', {'KX_Scene' : 'objects'}, ['channels'], True)
         ArmatureChannel = ItemDefinition('BL_ArmatureChannel', {'BL_ArmatureObject' : 'channels'}, [])
 
         GameObject.appendAttribute(Attribute('localPosition', 'vector_3'))
@@ -96,10 +97,13 @@ class Synchronizer(blender_cave.base.Base):
 
         Camera.appendAttributesFrom(GameObject)
 
+        FontObject.appendAttributesFrom(GameObject)
+
         self._itemsDefinitions.append(Scene)
         self._itemsDefinitions.append(GameObject)
         self._itemsDefinitions.append(LightObject)
         self._itemsDefinitions.append(Camera)
+        self._itemsDefinitions.append(FontObject)
         self._itemsDefinitions.append(ArmatureObject)
         self._itemsDefinitions.append(ArmatureChannel)
 

@@ -36,9 +36,9 @@
 import vrpn
 import mathutils
 import blender_cave.exceptions
-from . import base
+import blender_cave.device
 
-class _Sensor(base.Sender):
+class _Sensor(blender_cave.device.Sender):
     def __init__(self, parent, configuration):
         super(_Sensor, self).__init__(parent, configuration)
         self._id             = configuration['id']
@@ -58,7 +58,7 @@ class _Sensor(base.Sender):
     def __str__(self):
         return self.getParent().__str__() + '[' + str(self._id) + ']'
 
-class Tracker(base.Receiver):
+class Tracker(blender_cave.device.Receiver):
     def __init__(self, parent, configuration):
         super(Tracker, self).__init__(parent, configuration)
         self._scale          = configuration['scale']
@@ -67,12 +67,12 @@ class Tracker(base.Receiver):
         try:
             elements = configuration['sensors']
         except KeyError: 
-            raise blender_cave.exceptions.VRPN_Invalid_Device('VRPN tracker must have at least one sensor')
+            raise blender_cave.exceptions.Processor_Invalid_Device('VRPN tracker must have at least one sensor')
         self._sensors = {}
         for element in elements:
             try:
                 sensor = _Sensor(self, element)
-            except blender_cave.exceptions.VRPN_Invalid_Device as method:
+            except blender_cave.exceptions.Processor_Invalid_Device as method:
                 self.getLogger().warning(method)
             else:
                 self._sensors[sensor.getID()] = sensor

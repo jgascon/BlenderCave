@@ -34,9 +34,9 @@
 ## 
 
 import vrpn
-from . import base
+import blender_cave.device
 
-class Analog(base.Receiver, base.Sender):
+class Analog(blender_cave.device.Receiver, blender_cave.device.Sender):
     def __init__(self, parent, configuration):
         super(Analog, self).__init__(parent, configuration)
 

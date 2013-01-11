@@ -69,7 +69,7 @@ class User(base.Base):
         self.print_display(indent, 'User : ' + self._name + ' - eye separation : ' + str(self._eye_separation) + ' - default : ' + str(self._default_position))
         super(User, self).display(indent)
         
-    def getLocalConfiguration(self):
+    def getConfiguration(self):
         return {'name'             : self._name,
                 'eye_separation'   : self._eye_separation,
                 'default_position' : self._default_position}

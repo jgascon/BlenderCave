@@ -37,7 +37,6 @@ import blender_cave.base
 import blender_cave.exceptions
 
 try:
-    from . import local_devices
     from . import tracker
     from . import analog
     from . import button
@@ -53,17 +52,11 @@ class VRPN(blender_cave.base.Base):
 
         self._devices = []
 
-        if not 'processor_configuration' in configuration:
-            return
-
-        self._processor = configuration['module'].Processor(self, configuration['processor_configuration'])
-
         try:
             device_types = {'button'        : button.Button,
                             'analog'        : analog.Analog,
                             'tracker'       : tracker.Tracker,
-                            'text'          : text.Text,
-                            'local_devices' : local_devices.LocalDevices}
+                            'text'          : text.Text}
         except NameError:
             pass
         else:
@@ -76,23 +69,14 @@ class VRPN(blender_cave.base.Base):
                 for element in elements:
                     try:
                         self._devices.append(className(self, element))
-                    except blender_cave.exceptions.VRPN_Invalid_Device as method:
+                    except blender_cave.exceptions.Processor_Invalid_Device as method:
                         self.getLogger().warning(method)
         self._available = True
 
     def start(self):
         for index in range(len(self._devices)):
             self._devices[index].start()
-        if hasattr(self, '_processor'):
-            self._processor.start()
 
     def run(self):
         for index in range(len(self._devices)):
             self._devices[index].run()
-        if hasattr(self, '_processor'):
-            self._processor.idle()
-
-    def getProcessor(self):
-        if hasattr(self, '_processor'):
-            return self._processor
-        return None

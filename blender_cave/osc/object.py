@@ -36,15 +36,24 @@
 from . import base
 import bge
 import mathutils
+import blender_cave.exceptions
 
 class Object(base.Base):
-    def __init__(self, parent, name, configuration, id):
-        super(Object, self).__init__(parent, 'object', id)
-        self._object = bge.logic.getCurrentScene().objects[name]
+    def __init__(self, parent, obj, configuration):
+        super(Object, self).__init__(parent, 'object', len(parent._objects) + 1)
+        if isinstance(obj, str):
+            self._object = bge.logic.getCurrentScene().objects[obj]
+        elif isinstance(obj, bge.types.KX_GameObject):
+            self._object = obj
+        else:
+            raise blender_cave.exceptions.OSC_Invalid_Object(str(obj))
+        if 'BlenderCave_OSC' in self._object:
+            raise blender_cave.exceptions.OSC_Invalid_Already_Created(str(obj))
         self._configuration = configuration
         self._commands['sound']    = { 'type'  : 'string'}
         self._commands['position'] = { 'type'  : 'matrix'}
-        self._commands['loop']     = { 'type'  : 'bool'}
+        self._commands['loop']     = { 'type'  : 'state'}
+        self._commands_order       = ['sound', 'loop', 'volume', 'start', 'position', 'mute']
         self.define_commands()
 
         if 'sound' in configuration:
@@ -54,3 +63,6 @@ class Object(base.Base):
     def run(self):
         self.position(self._object.worldOrientation.to_4x4() * mathutils.Matrix.Translation(self._object.worldPosition))
         super(Object, self).run()
+
+    def getName(self):
+        return self._object.name

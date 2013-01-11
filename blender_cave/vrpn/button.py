@@ -34,9 +34,9 @@
 ## 
 
 import vrpn
-from . import base
+import blender_cave.device
 
-class Button(base.Receiver, base.Sender):
+class Button(blender_cave.device.Receiver, blender_cave.device.Sender):
     def __init__(self, parent, configuration):
         super(Button, self).__init__(parent, configuration)
 

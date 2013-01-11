@@ -69,8 +69,11 @@ class WorkOnBlenderCave:
         return configuration
 
     def compileBlenderFileModule(self, blender_file_name):
-        from blender_cave import blender_file_script
-        module, file_name, module_name, specific_name = blender_file_script.getBlenderFileModule(blender_file_name, False)
-        if file_name is not None:
-            py_compile.compile(file_name)
+        module_path = os.path.dirname(blender_file_name)
+        specific_name, ext = os.path.splitext(os.path.basename(blender_file_name))
+        try:
+            py_compile.compile(os.path.join(module_path, '_' + specific_name + '.py'))
+        except IOError:
+            pass
+            
         
