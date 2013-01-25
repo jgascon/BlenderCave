@@ -27,3 +27,6 @@ arguments['log-path']       = os.path.join(blender_cave_path, 'logs')
 
 # The path where we can find some external python module. That will be append to PYTHONPATH environment variable. Usefull to set the path to VRPN module
 #arguments['python_path'] = ??
+
+# For the psExec, we must define a login and a password per computer
+# windows_logins = { 'master' : {'user' : 'me', 'password' : 'my password'} }

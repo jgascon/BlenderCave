@@ -50,18 +50,23 @@ class Base(blender_cave.base.Base):
             }
         self._commands_order = ['volume', 'start', 'mute']
 
+    def runAttribut(self, attribut):
+        if attribut['update']:
+            cmd = msg.MSG(self, '/' + self._name)
+            if self._OSC_ID is not None:
+                cmd.append(self._OSC_ID)
+            cmd.append(attribut['cmd'])
+            if attribut['value'] is not None:
+                cmd.append(attribut['value'])
+            self.getParent().sendCommand(cmd)
+            attribut['update'] = False
+
     def run(self):
         for name in self._commands_order:
-            attribut = self._commands[name]
-            if attribut['update']:
-                cmd = msg.MSG(self, '/' + self._name)
-                if self._OSC_ID is not None:
-                    cmd.append(self._OSC_ID)
-                cmd.append(attribut['cmd'])
-                if attribut['value'] is not None:
-                    cmd.append(attribut['value'])
-                self.getParent().sendCommand(cmd)
-                attribut['update'] = False
+            self.runAttribut(self._commands[name])
+
+    def getAttribut(self, name):
+        return self._commands[name]
 
     def _command_none(self, attribut):
         attribut['update'] = True
@@ -78,7 +83,7 @@ class Base(blender_cave.base.Base):
             return
         raise blender_cave.exceptions.OSC_Invalid_Type(str(value) + ' is not a boolean')
 
-    def _command_state(self, attribut, value):
+    def _command_state(self, attribut, value = None, force = False):
         if value is None:
             attribut['value'] = -1
             attribut['update'] = True
@@ -88,7 +93,7 @@ class Base(blender_cave.base.Base):
                 value = 1
             else:
                 value = 0
-            if attribut['value'] != value:
+            if force or (attribut['value'] != value):
                 attribut['value'] = value
                 attribut['update'] = True
             return

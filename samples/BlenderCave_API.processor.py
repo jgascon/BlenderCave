@@ -42,14 +42,14 @@ import bge
 class Configure(blender_cave.processor.Configure):
     def __init__(self, parent, attrs):
         super(Configure, self).__init__(parent, attrs)
-        if 'truc' in attrs:
-            self._truc = attrs['truc']
+        if 'I_am_a_flag' in attrs:
+            self._flag = attrs['I_am_a_flag']
         else:
-            self._truc = 'MACHOJIDS'
+            self._flag = 'no flag'
             
     def getConfiguration(self):
         dic = {}
-        dic['truc'] = self._truc
+        dic['I_am_a_flag'] = self._flag
         return dic
         
 class Processor(blender_cave.processor.Processor):
@@ -57,12 +57,12 @@ class Processor(blender_cave.processor.Processor):
         super(Processor, self).__init__(parent, configuration)
         self._scene = bge.logic.getCurrentScene()
         try:
-            self._trucRecup = configuration['truc']
+            self._flagRecup = configuration['I_am_a_flag']
         except KeyError:
-            self._trucRecup = 'notDEFIENED'
+            self._flagRecup = 'NOT_DEFINED'
 	
-    def poste(self):
-        print(self._trucRecup)
+    def flagInXmlFile(self):
+        print(self._flagRecup, 'issued from xml file')
         
-    def display(self):
-        print('Here I put My Functions Manninger')
+    def processorDisplayer(self,text):
+        print('Here I put whatever I wish, like:',text)

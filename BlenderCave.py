@@ -68,7 +68,7 @@ controller = work_on_blender_cave.WorkOnBlenderCave(blender_cave_path, arguments
 
 controller.compileBlenderCave()
 
-screens = controller.getConfiguration()
+computers = controller.getConfiguration()
 
 def quoteString(string):
     if ' ' in string:
@@ -125,7 +125,12 @@ def createCommand(arguments):
 def runCommand(computer, command):
     if computer != 'localhost':
         command = command.replace('"', '\\"')
-        command = 'ssh ' + computer + ' "' + command + '"'
+        if sys.platform == "win32":
+            user     = windows_logins[computer]['user']
+            password = windows_logins[computer]['password']
+            command  = 'start psexec \\' + '\\' + computer + ' -u ' + user + ' -p ' + password + ' -i ' + command
+        else:
+            command = 'ssh ' + computer + ' "' + command + '"'
     os.system(command)
 
 class InvalidCall(Exception):
@@ -150,8 +155,8 @@ try:
         if arguments['command'] == 'start':
             raise
 
-    instances = {}
-    for computer, screens in screens.items():
+    instances           = {}
+    for computer, screens in computers.items():
         instances[computer] = []
         for screen, attributs in screens.items():
             screen_arguments                = arguments

@@ -215,6 +215,8 @@ class Main:
                 self._vrpn.run()
                 if self.isMaster(): 
                     self._osc.run()
+            except SystemExit:
+                pass
             except:
                 self.log_traceback(True)
         if hasattr(self, '_load_scene'):
@@ -273,7 +275,7 @@ class Main:
     def _quitByNetwork(self, reason):
         """Internal quit: do not use"""
         self._logger.info('Quit: ' + reason)
-        self._osc.getGlobal().reset()
+        self._osc.reset()
         del(self._reload_backupper)
         self._stopAll()
         bge.logic.endGame()

@@ -43,7 +43,7 @@ class User(base.Base):
         self._user = _user
         self._commands['position'] = { 'type'  : 'matrix',
                                        'cmd'   : 'position'}
-
+        self._commands['hrtf'] = { 'type': 'vol' }
         attributs = ['warmth', 'brightness', 'presence',
                      'reverb_volume', 'running_reverb',
                      'late_reverb', 'envelop', 'heavyness',
@@ -51,7 +51,7 @@ class User(base.Base):
         for attribut in attributs:
             self._commands[attribut] = { 'type': 'int'}
 
-        self._commands_order         = ['volume', 'position', 'start', 'mute']
+        self._commands_order         = ['hrtf','volume', 'position', 'start', 'mute']
         self.define_commands()
         self._user.BlenderCave_OSC = self
 

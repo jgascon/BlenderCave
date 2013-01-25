@@ -46,12 +46,7 @@ class OSC(blender_cave.base.Base):
     def __init__(self, parent,  configuration):
         super(OSC, self).__init__(parent)
 
-        self._valid = False
-
         self.stateToggle = None
-
-        if ('host' not in configuration) or ('port' not in configuration):
-            return
 
         self._global = base.Base(self, 'global', None) 
 
@@ -79,29 +74,42 @@ class OSC(blender_cave.base.Base):
             except:
                 self.log_traceback(False)
 
-        self.getLogger().info('Connection to OSC host : ' + configuration['host'] + ':' + str(configuration['port']))
-        self._client = client.Client(self, configuration['host'], configuration['port'])
-        self._valid = True
+        if ('host' in configuration) or ('port' in configuration):
+            self._client = client.Client(self, configuration['host'], configuration['port'])
+
+    def __del__(self):
+        self._close()
+
+    def _close(self):
+        del(self._client)
+
+
+    def isAvailable(self):
+        return hasattr(self, '_client')
 
     def reset(self):
-        if self._valid:
+        if hasattr(self, '_client'):
             cmd = msg.MSG(self, '/global')
             cmd.append('reset')
             self.sendCommand(cmd)        
 
     def addObject(self, obj, configuration):
-        if self._valid:
-            try:
-                obj = object.Object(self, obj, configuration)
-                self._objects[obj.getName()] = obj
-            except:
-                self.log_traceback(False)
+        try:
+            obj = object.Object(self, obj, configuration)
+            self._objects[obj.getName()] = obj
+        except:
+            self.log_traceback(False)
                  
     def start(self):
         pass
 
+
+    def reset(self):
+        self._global.reset();
+        self._global.runAttribut(self._global.getAttribut('reset'))
+
     def run(self):
-        if self._valid:
+        if hasattr(self, '_client'):
             try:
                 self._global.run()
                 for name, object in self._objects.items():
@@ -111,10 +119,10 @@ class OSC(blender_cave.base.Base):
             except socket.error:
                 self.getBlenderCave().log_traceback(False)
                 self.getLogger().warning('Cannot send command to OSC host => stop OSC !')
-                self._valid = False
+                self._close()
 
     def sendCommand(self, cmd):
-        if self._valid:
+        if hasattr(self, '_client'):
             self._client.send(cmd)
 
     def getGlobal(self):

@@ -5,7 +5,6 @@
   </user>
 
   <computer name="*">
-
     <screen name="console">
       <graphic_buffer name="alone" user='user A' eye="middle"/>
       <corner name="topRightCorner">1.0, 1.0, -1.0</corner>

@@ -36,26 +36,31 @@
 import mathutils
 import math
 import blender_cave.base
+from blender_cave import user
 
-class _HCNav_user(blender_cave.base.Base):
-    def __init__(self, parent, user):
-        super(_HCNav_user, self).__init__(parent)
-        self._user = user
+class _HCNav(blender_cave.base.Base):
+    def __init__(self, parent, element):
+        super(_HCNav, self).__init__(parent)
+        self._element = element
         self.reset()
-        self._positionFactors = [{}, {}, {}]
+        self._positionFactors    = [{}, {}, {}]
+        self._orientationFactors = {}
+        self._headNeckLocation   = mathutils.Matrix.Translation((0.0, -0.15, 0.12))
+
+        # Default factors
         self.setPositionFactors(0, 0.5, 3)
         self.setPositionFactors(1, 0.5, 3)
         self.setPositionFactors(2, 0.5, 3)
-        self._orientationFactors = {}
         self.setOrientationFactors(0.07, 2)
-        self._headNeckLocation = mathutils.Matrix.Translation((0.0, -0.15, 0.12))
 
     def reset(self):
         self._position             = mathutils.Vector((0.0, 0.0, 0.0))
         self._quaternion           = mathutils.Quaternion()
+        self._orientation          = mathutils.Matrix()
         self._orientation_inverted = mathutils.Matrix()
         self._calibrate            = False
         self._run                  = False
+        self._calibrated           = False
 
     def setPositionFactors(self, component, attenuation, power, max = 1.0): # should be a vector
         self._positionFactors[component]['attenuation'] = attenuation
@@ -77,11 +82,20 @@ class _HCNav_user(blender_cave.base.Base):
         if newState == HCNav.CALIBRATE:
             self._calibrate = True
         elif newState == HCNav.START:
-            self._run = True
+            if self._calibrated:
+                self._run = True
+            else:
+                self.getLogger().warning('cannot start while not calibrated !')
         elif newState == HCNav.STOP:
             self._run = False
         elif newState == HCNav.TOGGLE:
-            self._run = not self._run
+            if self._run:
+                self._run = False
+            else:
+                if self._calibrated:
+                    self._run = True
+                else:
+                    self.getLogger().warning('cannot start while not calibrated !')
         elif newState == HCNav.RESET:
             self.reset()
 
@@ -93,6 +107,7 @@ class _HCNav_user(blender_cave.base.Base):
             self._orientation          = matrix.to_3x3()
             self._orientation_inverted = self._orientation_inverted.inverted()
             self._calibrate            = False
+            self._calibrated           = True
 
         if not self._run:
             return
@@ -122,8 +137,10 @@ class _HCNav_user(blender_cave.base.Base):
 
         delta = orientation.to_4x4() * mathutils.Matrix.Translation(position)
 
-        self._user.setVehiclePosition(delta * self._user.getVehiclePosition())
-
+        if isinstance(self._element, user.User):
+            self._element.setVehiclePosition(delta * self._element.getVehiclePosition())
+        else:
+            self._element(delta)
 
 class HCNav(blender_cave.base.Base):
     CALIBRATE = 'calibrate'
@@ -132,13 +149,19 @@ class HCNav(blender_cave.base.Base):
     TOGGLE    = 'toggle'
     RESET     = 'reset'
 
-    def __init__(self, parent):
+    def __init__(self, parent, method = None):
         super(HCNav, self).__init__(parent)
 
-        for user in self.getBlenderCave().getAllUsers():
-            user._HCNav = _HCNav_user(self, user)
+        if method is None:
+            for user in self.getBlenderCave().getAllUsers():
+                user._HCNav = _HCNav(self, user)
+        elif hasattr(method, '__call__'):
+            self._local = _HCNav(self, method)
 
     def setPositionFactors(self, component, attenuation, power, max = 1.0, user = None): # should be a vector
+        if hasattr(self, '_local'):
+            self._local.setPositionFactors(component, attenuation, power, max)
+            return
         if user is None:
             for user in self.getBlenderCave().getAllUsers():
                 user._HCNav.setPositionFactors(component, attenuation, power, max)
@@ -146,6 +169,9 @@ class HCNav(blender_cave.base.Base):
             user._HCNav.setPositionFactors(component, attenuation, power, max)
 
     def setOrientationFactors(self, attenuation, power, max = 1.0, user = None): # should be a vector
+        if hasattr(self, '_local'):
+            self._local.setOrientationFactors(attenuation, power, max)
+            return
         if user is None:
             for user in self.getBlenderCave().getAllUsers():
                 user._HCNav.setOrientationFactors(attenuation, power, max)
@@ -153,9 +179,15 @@ class HCNav(blender_cave.base.Base):
             user._HCNav.setOrientationFactors(attenuation, power, max)
 
     def setHeadNeckLocation(self, user, location): 
+        if hasattr(self, '_local'):
+            self._local.setHeadNeckLocation(location)
+            return
         user._HCNav.setHeadNeckLocation(location)
        
     def update(self, state, user = None):
+        if hasattr(self, '_local'):
+            self._local.update(state)
+            return
         if user is None:
             for user in self.getBlenderCave().getAllUsers():
                 user._HCNav.update(state)
@@ -163,4 +195,7 @@ class HCNav(blender_cave.base.Base):
             user._HCNav.update(state)
 
     def setHeadLocation(self, user, info):
+        if hasattr(self, '_local'):
+            self._local.setHeadLocation(info['matrix'])
+            return
         user._HCNav.setHeadLocation(info['matrix'])

@@ -50,6 +50,7 @@ class Processor(blender_cave.processor.Processor):
     def __init__(self, parent, configuration):
         super(Processor, self).__init__(parent, configuration)
         self._scene = bge.logic.getCurrentScene()
+        #self._navigator = hc_nav.HCNav(parent, self.process_hcnav)
         self._navigator = hc_nav.HCNav(parent)
         self._navigator.setPositionFactors(1, 20.0, 1.0)
 
@@ -58,6 +59,9 @@ class Processor(blender_cave.processor.Processor):
         self.getBlenderCave().getOSC().addObject(myPlane, {'sound'    : 'trumpet.wav'})
         myPlane['BlenderCave_OSC'].mute(self.getBlenderCave().getOSC().stateToggle)
         myPlane['BlenderCave_OSC'].volume('%50')
+
+    def process_hcnav(self, matrix):
+        print(matrix)
 
     def start(self):
         return
@@ -80,6 +84,8 @@ class Processor(blender_cave.processor.Processor):
             self._navigator.update(self._navigator.TOGGLE)
         if (info['button'] == 2) and (info['state'] == 1):
             self.reset(info['users'])
+        if (info['button'] == 3) and (info['state'] == 1):
+            self.getBlenderCave().quit("because user asked !")
 
     def texts(self, info):
         cmd = None
@@ -97,4 +103,5 @@ class Processor(blender_cave.processor.Processor):
                 self._navigator.update(cmd, user)
 
     def console(self, info):
+        return
         print("console informations: ", info)

@@ -46,6 +46,14 @@ class Client(blender_cave.base.Base):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4096 * 8)
         self._socket.connect((host, port))
+        self.getLogger().info('Connection to OSC host : ' + host + ':' + str(port))
 
+    def __del__(self):
+        self._socket.close()
+        del(self._socket)
+        
     def send(self, msg):
-        self._socket.sendall(msg.getBinary())
+        if hasattr(self, '_socket'):
+            self._socket.sendall(msg.getBinary())
+
+        

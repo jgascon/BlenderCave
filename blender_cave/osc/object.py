@@ -61,7 +61,10 @@ class Object(base.Base):
         self._object['BlenderCave_OSC'] = self
 
     def run(self):
-        self.position(self._object.worldOrientation.to_4x4() * mathutils.Matrix.Translation(self._object.worldPosition))
+        camera = bge.logic.getCurrentScene().active_camera
+        camera_position = camera.worldOrientation.to_4x4() * mathutils.Matrix.Translation(camera.worldPosition)
+        object_position = self._object.worldOrientation.to_4x4() * mathutils.Matrix.Translation(self._object.worldPosition)
+        self.position(camera_position.inverted() * object_position)
         super(Object, self).run()
 
     def getName(self):
