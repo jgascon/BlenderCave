@@ -9,7 +9,7 @@ _blenderCave() {
 
     case $argc in
 	1)
-	    opts="start startalone stop stopalone"
+	    opts="start startalone stop stopalone version"
 	    COMPREPLY=( $(compgen -W "$opts" -- $cur ) )
 	    ;;
 	2)

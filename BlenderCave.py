@@ -41,6 +41,10 @@ import subprocess
 import tempfile
 import time
 
+if (sys.argv[1] == 'version'):
+    print('BlenderCave version 2.4')
+    sys.exit()
+
 arguments = {}
 
 if 'BLENDER_CAVE_GLOBAL_CONFIGURATION' in os.environ:
