@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -39,10 +39,11 @@ from . import msg
 import mathutils
 
 class Base(blender_cave.base.Base):
-    def __init__(self, parent, name, OSC_ID):
+    def __init__(self, parent, name, OSC_ID_1 = None, OSC_ID_2 = None):
         super(Base, self).__init__(parent)
         self._name     = name
-        self._OSC_ID   = OSC_ID
+        self._OSC_ID_1   = OSC_ID_1
+        self._OSC_ID_2   = OSC_ID_2
         self._commands = {
             'start':  { 'type': 'state'},
             'volume': { 'type': 'vol' },
@@ -53,8 +54,10 @@ class Base(blender_cave.base.Base):
     def runAttribut(self, attribut):
         if attribut['update']:
             cmd = msg.MSG(self, '/' + self._name)
-            if self._OSC_ID is not None:
-                cmd.append(self._OSC_ID)
+            if self._OSC_ID_1 is not None:
+                cmd.append(self._OSC_ID_1)
+            if self._OSC_ID_2 is not None:
+                cmd.append(self._OSC_ID_2)
             cmd.append(attribut['cmd'])
             if attribut['value'] is not None:
                 cmd.append(attribut['value'])
@@ -64,6 +67,12 @@ class Base(blender_cave.base.Base):
     def run(self):
         for name in self._commands_order:
             self.runAttribut(self._commands[name])
+
+    def getID_1(self):
+        return self._OSC_ID_1
+
+    def getID_2(self):
+        return self._OSC_ID_2
 
     def getAttribut(self, name):
         return self._commands[name]

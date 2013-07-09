@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -42,10 +42,9 @@ import blender_cave.exceptions
 
 class Configure(blender_cave.base.Base, xml.sax.handler.ContentHandler, xml.sax.handler.EntityResolver):
 
-    def __init__(self, parent, environ, onlyScreens = False):
+    def __init__(self, parent, environ):
         super(Configure, self).__init__(parent)
 
-        self._only_screens = onlyScreens
         self._environ      = environ
         self._file_name    = self._environ.getEnvironment('config_file')
         self._screen_name  = self._environ.getEnvironment('screen')
@@ -58,14 +57,43 @@ class Configure(blender_cave.base.Base, xml.sax.handler.ContentHandler, xml.sax.
         self._currentObject = root.Root(self)
         parser.parse(self._file_name)
 
-    def getOnlyScreens(self):
-        return self._only_screens
-
     def getScreen(self):
         return self._screen_name
 
-    def getConfiguration(self):
+    def getGlobalConfiguration(self):
         return self._currentObject.getConfiguration()
+
+    def getLocalConfiguration(self):
+        configuration = self._currentObject.getConfiguration()
+        import socket
+        computer_name = socket.gethostname()
+        computers     = configuration['computers']
+
+        if len(computers) == 1:
+            screens = list(computers.values())[0]
+        else:
+            try:
+                screens = computers[computer_name]
+            except KeyError:
+                raise blender_cave.exceptions.Configure('This computer (' + computer_name + ') is not defined in the configuration file\nAvailable computers : ' + str(list(computers.keys())))
+
+        if len(screens) == 1:
+            screen = list(screens.values())[0]
+        else:
+            try:
+                screen = screens[self._screen_name] 
+            except KeyError:
+                if self._screen_name is None:
+                    raise blender_cave.exceptions.Configure('Several screens defined in the configuration file\nAvailable screens : ' + str(list(screens.keys())))
+                else:
+                    raise blender_cave.exceptions.Configure('This screen (' + self._screen_name + ') is not defined in the configuration file\nAvailable screens : ' + str(list(screens.keys())))
+
+        configuration['screen'] = screen
+
+        configuration['connection']['is_master'] = screen['master']
+        configuration['connection']['screen_id'] = screen['id']
+
+        return configuration
 
     def resolveEntity(self,publicID,systemID):
         filename = self._environ.checkConfigurationFile(systemID, False)

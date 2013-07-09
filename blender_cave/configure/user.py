@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -33,7 +33,6 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
-import mathutils
 from . import base
 
 class User(base.Base):
@@ -48,7 +47,7 @@ class User(base.Base):
             self.print_warning('Invalid float value (' + attrs['eye_separation'] + ')')
             self._eye_separation = 0.06
 
-        self._default_position = mathutils.Vector()
+        self._default_position = self.getMathVector((0.0, 0.0, 0.0))
         self._set_default_position = False
 
     def startElement(self, name, attrs):

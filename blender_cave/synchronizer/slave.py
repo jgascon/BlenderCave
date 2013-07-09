@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -33,85 +33,60 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
+import copy
 import bge
-import blender_cave.buffer
+import blender_cave.base
 import blender_cave.exceptions
+from . import Synchronizer
 
-class ItemProperty():
-    def __init__(self, synchronizer, parent_id, child_id, child_item_type_id, child_name):
-        self._synchronizer = synchronizer
-        self._parent_id = parent_id
-        self._id = child_id
+class Slave(Synchronizer):
+    def __init__(self, parent):
+        super(Slave, self).__init__(parent) 
 
-        if child_item_type_id >= len(self._synchronizer._itemsDefinitions):
-            raise blender_cave.exceptions.Synchronizer("Error : undefined object (" + str(child_item_type_id) + ") !")
+        self._items            = {}
 
-        self._itemDefinition = self._synchronizer._itemsDefinitions[child_item_type_id]
+        self._not_object_items = {}
 
-        if (self._id == self._parent_id) and (self._itemDefinition.name != 'KX_Scene'):
-            raise blender_cave.exceptions.Synchronizer("An object must have a different master than it !")
+        self._items[0] = self._createSynchronizerItem(bge.logic)
 
-        if (self._itemDefinition.name == 'KX_Scene') and (self._id != self._parent_id):
-            raise blender_cave.exceptions.Synchronizer("A scene cannot be children of anything else !")
+    def processSynchronizerBuffer(self, buffer):
 
-        if (self._itemDefinition.name == 'KX_Scene'):
-            for scene in bge.logic.getSceneList():
-                if self._isValidChoiceForName(scene, child_name):
-                    self._item = scene
-            if (hasattr(self, '_item')) == False:
-                raise blender_cave.exceptions.Synchronizer("Error : undefined scene : " + child_name + " !")
-            self._scene_id = self._id
-        else:
-            parentItemProperty = self._synchronizer.getItemPropertyFromSlave(self._parent_id)
-            parent = parentItemProperty.getItem()
+        while len(buffer) > 0:
+            
+            command = buffer.command()
 
-            sceneItemProperty = parentItemProperty
-            while sceneItemProperty._itemDefinition.name != 'KX_Scene':
-                sceneItemProperty = self._synchronizer.getItemPropertyFromSlave(sceneItemProperty._parent_id)
+            if command == self.DELETE_ITEM:
+                item_id   = buffer.itemID()
+                try:
+                    del(self._items[item_id])
+                except KeyError:
+                    pass
+                continue
 
-            self._scene_id = sceneItemProperty._id
+            if command == self.CREATE_ITEM:
+                parent_id   = buffer.itemID()
+                item_id     = buffer.itemID()
+                item_name   = buffer.string()
+                parent_name = buffer.string()
+                try:
+                    parent_item = self._items[parent_id]
+                except KeyError:
+                    continue
+                item = parent_item.getItemByName(item_name, parent_name)
+                self._items[item_id] = self._createSynchronizerItem(item)
+                continue
 
-            children = getattr(parent, self._itemDefinition.ancestors[parent.__class__.__name__])
-            try:
-                for child in children:
-                    if self._isValidChoiceForName(child, child_name):
-                        self._item = child
-                    
-            except TypeError:
-                if self._isValidChoiceForName(children, child_name):
-                    self._item = child
+            if command == self.SET_ATTRIBUTE:
+                item_id     = buffer.itemID()
+                item_buffer = buffer.subBuffer()
+                try:
+                    item = self._items[item_id]
+                    item.processSynchronizerBuffer(item_buffer)
+                except KeyError:
+                    pass
+                except:
+                    self.getBlenderCave().log_traceback(False)
+                continue
 
-            if (hasattr(self, '_item')) == False: # Ici, il faut créer l'objet ...
-                scene = self._synchronizer.getItemPropertyFromSlave(self._scene_id).getItem()
-                if self._scene_id == self._parent_id:
-                    other = child_name
-                else:
-                    other = self._synchronizer.getItemPropertyFromSlave(self._parent_id).getItem()
-                self._item = scene.addObject(child_name, other)
-
+            raise blender_cave.exceptions.Synchronizer("buffer from master reading error: not start of item !")
         return
-
-    def __del__(self):
-        self._item.endObject()
-
-    def _isValidChoiceForName(self, item, name):
-        if (hasattr(item, 'name') == False):
-            return False
-        if item.name != name:
-            return False
-        return (self._synchronizer.alreadyRegistredLocalItemID(id(item)) == False)
-
-    def updateAttributes(self, buffer):
-        while True:
-            attributes_id = buffer.unsigned_char()
-            if attributes_id == self._synchronizer.END_ATTRIBUTE:
-                break
-            attribute = self._itemDefinition.attributes[attributes_id]
-            value = getattr(buffer, attribute.packMethod)()
-            setattr(self._item, attribute.name, value)
-
-    def getItemDefinition(self):
-        return self._itemDefinition
-
-    def getItem(self):
-        return self._item

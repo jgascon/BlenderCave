@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -99,7 +99,7 @@ class _HCNav(blender_cave.base.Base):
         elif newState == HCNav.RESET:
             self.reset()
 
-    def setHeadLocation(self, matrix):
+    def setHeadLocation(self, matrix, info):
         matrix =  matrix * self._headNeckLocation
         if self._calibrate:
             self._position             = matrix.to_translation()
@@ -133,14 +133,14 @@ class _HCNav(blender_cave.base.Base):
             scaleOrientation = self._orientationFactors['max']
         orientation = quat_o.slerp(quat_d, scaleOrientation)
 
-        orientation = self._orientation * orientation.to_matrix().inverted()
+        orientation = orientation.to_matrix().inverted() * self._orientation
 
         delta = orientation.to_4x4() * mathutils.Matrix.Translation(position)
 
         if isinstance(self._element, user.User):
             self._element.setVehiclePosition(delta * self._element.getVehiclePosition())
         else:
-            self._element(delta)
+            self._element(delta, info)
 
 class HCNav(blender_cave.base.Base):
     CALIBRATE = 'calibrate'
@@ -178,11 +178,15 @@ class HCNav(blender_cave.base.Base):
         else:
             user._HCNav.setOrientationFactors(attenuation, power, max)
 
-    def setHeadNeckLocation(self, user, location): 
+    def setHeadNeckLocation(self, location, user = None): 
         if hasattr(self, '_local'):
             self._local.setHeadNeckLocation(location)
             return
-        user._HCNav.setHeadNeckLocation(location)
+        if user is None:
+            for user in self.getBlenderCave().getAllUsers():
+                user._HCNav.setHeadNeckLocation(location)
+        else:
+            user._HCNav.setHeadNeckLocation(location)
        
     def update(self, state, user = None):
         if hasattr(self, '_local'):
@@ -196,6 +200,6 @@ class HCNav(blender_cave.base.Base):
 
     def setHeadLocation(self, user, info):
         if hasattr(self, '_local'):
-            self._local.setHeadLocation(info['matrix'])
+            self._local.setHeadLocation(info['matrix'], info)
             return
-        user._HCNav.setHeadLocation(info['matrix'])
+        user._HCNav.setHeadLocation(info['matrix'], info)

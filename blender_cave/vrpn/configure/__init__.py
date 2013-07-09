@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -33,8 +33,6 @@
 ## knowledge of the CeCILL license and that you accept its terms.
 ## 
 
-import mathutils
-import bge
 import os
 import imp
 import blender_cave.configure.base
@@ -47,7 +45,12 @@ class VRPN(blender_cave.configure.base.Base):
         self._available = False
 
         if blender_cave.vrpn._VRPN_NOT_AVAILABLE:
-            self.getLogger().warning('No VRPN Available !')
+            try:
+                import bge
+            except ImportError:
+                pass
+            else:
+                self.getLogger().warning('No VRPN Available !')
             return
         self._available = True
 

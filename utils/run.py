@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.2
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -61,6 +61,7 @@ parser.add_option("",   "--command",           dest="command")
 parser.add_option("",   "--options",           dest="options")
 parser.add_option("",   "--blender-file",      dest="blender_file")
 parser.add_option("",   "--config-file",       dest="config_file")
+parser.add_option("",   "--config-path",       dest="config_path")
 parser.add_option("",   "--log-path",          dest="log_path")
 parser.add_option("-c", action="store_true",   dest="clear_previous")
 parser.add_option("-b", action="store_true",   dest="background")
@@ -79,6 +80,8 @@ pid_file = os.path.join(options.pid_path, 'blender_cave_' + computer + '_' + opt
 
 testCreatePath(options.log_path)
 log_file = os.path.join(options.log_path, 'blender_cave_' + computer + '_' + options.screen + '.log')
+log_run_file = os.path.join(options.log_path, 'run_blender_cave_' + computer + '_' + options.screen + '.log')
+log_run_file = os.devnull
 
 testCreatePath(options.rb_path)
 rb_file = os.path.join(options.rb_path, 'blender_cave_!PID!.dat')
@@ -115,12 +118,14 @@ elif options.command == 'start':
         except:
             pass
 
+    environment = os.environ
+
     python_path = [blender_cave_path]
     if 'PYTHONPATH' in os.environ:
         python_path += os.environ['PYTHONPATH'].split(':')
     if options.python_path is not None:
         python_path += options.python_path.split(':')
-    environment = {'PYTHONPATH' : quoteString(':'.join(python_path))}
+    environment['PYTHONPATH'] = quoteString(':'.join(python_path))
 
     if options.display is not None:
         environment['DISPLAY'] = options.display
@@ -157,6 +162,8 @@ elif options.command == 'start':
 
     command.append('--config-file='+quoteString(options.config_file))
 
+    command.append('--config-path='+quoteString(options.config_path))
+
     if options.background:
         command.append('--log-file=' + quoteString(log_file))
         if options.clear_previous:
@@ -172,7 +179,7 @@ elif options.command == 'start':
     command.append('--rb-file=' + rb_file)
 
     if options.background:
-        with open(os.devnull, "w") as fnull:
+        with open(log_run_file, "w") as fnull:
             process = subprocess.Popen(command, env=environment, stderr=fnull, stdout=fnull)
             file = open(pid_file, 'w')
             file.write(str(process.pid))

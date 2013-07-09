@@ -1,5 +1,5 @@
 # -*- coding: iso-8859-1 -*-
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -72,9 +72,7 @@ class Main:
             from . import configure
             global_configuration = configure.Configure(self, environ)
 
-            blend_file = environ.getEnvironment('blend_file')
-
-            configuration = global_configuration.getConfiguration()
+            configuration = global_configuration.getLocalConfiguration()
             del(global_configuration)
 
             # Configure the reload backupper: a module to be able to reload the context in case of reload of the scene. Not efficient for the moment
@@ -88,10 +86,15 @@ class Main:
             # Configure the network connexions: deals with network
             from . import network
             self._network = network.Network(self, configuration['connection'])
+            self._number_screens = configuration['connection']['number_screens']
 
             # Configure the synchronizer: check differences between frames to exchange between the master and the slaves
-            from . import synchronizer
-            self._synchronizer = synchronizer.Synchronizer(self)
+            if self.isMaster():
+                from .synchronizer import master as synchronizer
+                self._synchronizer = synchronizer.Master(self)
+            else:
+                from .synchronizer import slave as synchronizer
+                self._synchronizer = synchronizer.Slave(self)
 
             # Configure the users
             from . import user
@@ -103,38 +106,44 @@ class Main:
             from . import screen
             self._screen = screen.Screen(self, configuration['screen'])
 
-            # Order is important : OSC must exists before to processor, that must exists before VRPN !
-            # Configure OSC: module to send the position of the objects and the users to the spatialized sound rendering system
-            from . import osc
-            self._osc = osc.OSC(self, configuration['osc'])
+            if (self.isMaster()) and ('osc' in configuration):
+                # Order is important : OSC must exists before to processor, that must exists before VRPN !
+                # Configure OSC: module to send the position of the objects and the users to the spatialized sound rendering system
+                from . import osc
+                self._osc = osc.OSC(self, configuration['osc'])
 
             # Configure the processor
+            if 'processor' not in configuration:
+                configuration['processor'] = {}
             self._processor = self._processorModule.Processor(self, configuration['processor'])
 
             # Configure CONSOLE: module to get the interactions
             from . import console
             self._console = console.Console(self)
 
-            # Configure VRPN: module to get the interactions
-            from . import vrpn
-            self._vrpn = vrpn.VRPN(self, configuration['vrpn'])
+            if (self.isMaster()) and ('vrpn' in configuration):
+                # Configure VRPN: module to get the interactions
+                from . import vrpn
+                self._vrpn = vrpn.VRPN(self, configuration['vrpn'])
 
             # Configure splash screen: the electocardiogram that is displayed when waiting for every connexions
             from . import splash
             self._splash = splash.Splash(self)
 
-            if blend_file is not None:
-                self.loadScene(blend_file)
-            else:
-                self._splash.setMessage("Waiting for all slaves !")
-                self._splash.start()
+            self._splash.setMessage("Waiting for all slaves !")
+            self._splash.start()
 
             if self.isMaster():
-                if self.getProcessor() is not None:
-                    self.getProcessor().start()
+                self.getProcessor().start()
                 self._console.start();
+
+            if hasattr(self, '_vrpn'):
                 self._vrpn.start()
+
+            if hasattr(self, '_osc'):
                 self._osc.start()
+
+            self._network.start()
 
             self._initiated = True
 
@@ -160,6 +169,10 @@ class Main:
         """Get the array of all the users"""
         return self._users
 
+    def getSceneSynchronizer(self):
+        """Get the main synchronizer module"""
+        return self._synchronizer
+
     def addObjectToSynchronize(self, object, name):
         """Add an object to the synchronizer"""
         self._network.addObjectToSynchronize(object, name)
@@ -171,6 +184,9 @@ class Main:
         Otherwise, you may have problem of not closed socket next time you run BlenderCave
         The reason is printed inside the log file of displayed on the console"""
         self._network.quit(reason)
+
+    def numberScreens(self):
+        return self._number_screens
 
     def isMaster(self):
         """Are we the master rendering node ?
@@ -190,12 +206,6 @@ class Main:
         """Get the reload backupper: not usefull for the moment"""
         return self._reload_backupper
 
-    def loadScene(self, blender_file):
-        """Load a scene: not usefull for the moment"""
-        self._load_scene = blender_file
-        self._splash.setMessage("Loading the Scene")
-        self._splash.start()
-
     def isNetworkReady(self):
         """Can we use the network ?
 
@@ -206,37 +216,22 @@ class Main:
         """Activate the interactions
 
         The interaction (VRPN and OSC) are activated by this method. So you should call it once per frame from blender file"""
-        if (self._initiated) and (self.isMaster()) and (self.isNetworkReady()):
-            try:
+        try:
+            if (self._initiated) and (self.isNetworkReady()):
                 if self.getProcessor() is not None:
                     self.getProcessor().run()
                 if self.isMaster(): 
                     self._console.run()
-                self._vrpn.run()
-                if self.isMaster(): 
-                    self._osc.run()
-            except SystemExit:
-                pass
-            except:
-                self.log_traceback(True)
-        if hasattr(self, '_load_scene'):
-            if self.isNetworkReady():
-                if self._splash.sceneIsSplash():
-                    actuator = bge.logic.getCurrentController().owner.actuators['Game']
-                    actuator.fileName = self._load_scene
-                    bge.logic.getCurrentController().activate(actuator)
-                    self.getLogger().warning('Loading a new scene : ' + self._load_scene)
-                del(self._load_scene)
-                try:
-                    del(self._not_ready_to_load)
-                except AttributeError:
-                    pass
-            else:
-                if not hasattr(self, '_not_ready_to_load'):
-                    self._not_ready_to_load = True
-                    self._splash.setMessage("Defering loading the scene")
 
-                    self.getLogger().info('Defering loading ' + self._load_scene + ' until everybody is connected !')
+                if hasattr(self, '_vrpn'):
+                    self._vrpn.run()
+
+                if hasattr(self, '_osc'):
+                    self._osc.run()
+        except SystemExit:
+            pass
+        except:
+            self.log_traceback(True)
 
     def getLogger(self):
         """Usefull method to get the logger
@@ -246,7 +241,8 @@ class Main:
 
     def getOSC(self):
         """Get OSC main sender"""
-        return self._osc
+        if hasattr(self, '_osc'):
+            return self._osc
 
     def log_traceback(self, error):
         """Log the traceback
@@ -275,7 +271,11 @@ class Main:
     def _quitByNetwork(self, reason):
         """Internal quit: do not use"""
         self._logger.info('Quit: ' + reason)
-        self._osc.reset()
+        try:
+            if hasattr(self, '_osc'):
+                self._osc.reset()
+        except AttributeError:
+            pass
         del(self._reload_backupper)
         self._stopAll()
         bge.logic.endGame()
@@ -313,6 +313,10 @@ class Main:
             self._processorModule = imp.load_module(specific_name, file, file_name, data)
             self.getLogger().info('Loading  "' + file_name + '" as main processor')
             self._processorModule._name = specific_name
+
+    def getVersion(self):
+        from . import version
+        return version.version
 
 # If we cannot import BGE, then we must not construct Blender CAVE !
 try:

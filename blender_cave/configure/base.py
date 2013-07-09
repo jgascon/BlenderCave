@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -38,6 +38,11 @@ import xml.sax.xmlreader
 import blender_cave.base
 import blender_cave.exceptions
 from . import Configure
+
+try:
+    import mathutils
+except ImportError:
+    pass
 
 class Base(blender_cave.base.Base, xml.sax.handler.ContentHandler):
 
@@ -115,30 +120,39 @@ class Base(blender_cave.base.Base, xml.sax.handler.ContentHandler):
             for child_name in self._children[child_type]:
                 self._children[child_type][child_name].display(indent + 1)
 
+    def getMathVector(self, vector, option = 3):
+        try:
+            if isinstance(option, mathutils.Vector):
+                return option
+            elif isinstance(option, int):
+                if option == 2:
+                    return mathutils.Vector((vector[0], vector[1]))
+                elif option == 3:
+                    return mathutils.Vector((vector[0], vector[1], vector[2]))
+                elif option == 4:
+                    return mathutils.Vector((vector[0], vector[1], vector[2], vector[3]))
+                else:
+                    return
+            else:
+                return
+        except NameError:
+            return vector
+
     def getVector(self, vector, option = 3):
-        import mathutils
         if isinstance(vector, str):
             coordinates = []
             try:
                 for coordinate in vector.split(','):
                     coordinates.append(float(coordinate))
                     if len(coordinates) == option:
-                        return mathutils.Vector((coordinates[0], coordinates[1], coordinates[2]))
+                        return self.getMathVector(coordinates)
             except ValueError as error:
                 self.raise_error('Invalid vector "' + vector + '": ' + str(error))
             self.raise_error('Invalid vector : "' + vector + '"')
         elif isinstance(vector, xml.sax.xmlreader.AttributesImpl):
-            if isinstance(option, mathutils.Vector):
-                result = option
-            elif isinstance(option, int):
-                if option == 2:
-                    result = mathutils.Vector((0.0, 0.0))
-                elif option == 3:
-                    result = mathutils.Vector((0.0, 0.0, 0.0))
-                elif option == 4:
-                    result = mathutils.Vector((0.0, 0.0, 0.0, 0.0))
-                else:
-                    return
+            result = self.getMathVector((0.0, 0.0, 0.0, 0.0), option)
+            if result is None:
+                return
             if len(result) == 2:
                 components = ['x', 'y']
             elif len(result) == 3:

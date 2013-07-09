@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -51,12 +51,18 @@ class _Sensor(blender_cave.device.Sender):
         matrix = info['matrix']
         matrix *= self._transformation
         for i in range(0, 3):
-            matrix[3][i] *= self.getParent()._scale
-        info['matrix'] = self.getParent()._transformation * matrix
+            matrix[3][i] *= self.getTracker()._scale
+        info['matrix'] = self.getTracker().getTransformation() * matrix
         self.process(info)
 
     def __str__(self):
-        return self.getParent().__str__() + '[' + str(self._id) + ']'
+        return self.getTracker().__str__() + '[' + str(self._id) + ']'
+
+    def getTracker(self):
+        return self.getParent()
+
+    def getTransformation(self):
+        return self._transformation
 
 class Tracker(blender_cave.device.Receiver):
     def __init__(self, parent, configuration):
@@ -111,3 +117,5 @@ class Tracker(blender_cave.device.Receiver):
         if sensor in self._sensors:
             self._sensors[sensor]._transformation = self._getMatrix(info, 'position offset', 'quaternion offset')
 
+    def getTransformation(self):
+        return self._transformation

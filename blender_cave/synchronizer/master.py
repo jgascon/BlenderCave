@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -34,70 +34,66 @@
 ## 
 
 import copy
-import blender_cave.buffer
+import bge
+import blender_cave.base
 import blender_cave.exceptions
+from . import Synchronizer
+from . import item_base
 
-class ItemProperty():
-    def __init__(self, item, synchronizer, parent):
-        self._item = item
-        self._synchronizer = synchronizer
+class Master(Synchronizer):
+    def __init__(self, parent):
+        super(Master, self).__init__(parent)
+        self._items            = {}
+        self._active           = []
+        self._mainItem         = self.getItem(bge.logic)
+        self._firstCreation     = True
 
-        self._id = id(self._item)
+    def _activateItem(self, synchronizerItem, activate):
+        if synchronizerItem.isSynchronizable():
+            if activate:
+                self._active.append(synchronizerItem.getItemID())
+            else:
+                try:
+                    self._active.remove(synchronizerItem.getItemID())
+                except ValueError:
+                    pass
 
-        item_type = self._item.__class__.__name__
-        if (item_type in self._synchronizer._itemsIDs) == False:
-            raise blender_cave.exceptions.Synchronizer("Error : undefined object (" + item_type + " from " + parent.__class__.__name__ + ")!")
-        self._item_type_id = self._synchronizer._itemsIDs[item_type]
-        item_definition = self._synchronizer._itemsDefinitions[self._item_type_id]
-        self.attributes = item_definition.attributes
-        self.children = item_definition.children
+    def getItem(self, item):
+        item_id = id(item)
+        if item_id not in self._items:
+            synchronizerItem = self._createSynchronizerItem(item)
+            self._items[item_id] = synchronizerItem
+        return self._items[item_id]
 
-        self._previousValues = {}
+    def getSynchronizerBuffer(self):
 
-        for attribute in self.attributes:
-            self._previousValues[attribute.name] = attribute.default
-
-        self._listOfKnownChildren = {}
-        self._currentRenderingIndex = 0
-
-        self._synchronizer.appendItemFromMaster(id(parent), self._id, self._item_type_id, self._item.name)
-
-    def _packChild(self, child):
-        child_id = id(child)
-        self._listOfKnownChildren[child_id] = self._currentRenderingIndex
-        self._synchronizer._createBufferFromItem(child, self._item)
-
-    def packAttributes(self):
         buffer = blender_cave.buffer.Buffer()
 
-        for attributeID in range(len(self.attributes)):
-            attribute = self.attributes[attributeID]
-            attribute.name = attribute.name
-            value = getattr(self._item, attribute.name)
-            if (self._previousValues[attribute.name] != value):
-                buffer.unsigned_char(attributeID)
-                getattr(buffer, attribute.packMethod)(value)
-                self._previousValues[attribute.name] = copy.copy(value)
-
-        self._synchronizer.appendAttributesFromMaster(self._id, buffer)
-
-    def packChildrens(self):
-        for children_name in self.children:
-            children = getattr(self._item, children_name)
+        items_to_delete = []
+        for item_id in self._items:
+            item = self._items[item_id]
             try:
-                for child in children:
-                    self._packChild(child)
-            except TypeError:
-                self._packChild(children)
+                str(item.getItem())
+            except SystemError:
+                items_to_delete.append(item_id)
+        for item_id in items_to_delete:
+            buffer.command(self.DELETE_ITEM)
+            buffer.itemID(item_id)
+            del(self._items[item_id])
 
-        deletedItems = []
-        for itemID, renderingIndex in self._listOfKnownChildren.items():
-            if renderingIndex != self._currentRenderingIndex:
-                deletedItems.append(itemID)
+        buffer += self._mainItem.getCreationBuffer(0)
 
-        for i in range(len(deletedItems)):
-            itemID = deletedItems[i]
-            del(self._listOfKnownChildren[itemID])
-            self._synchronizer.removeItemFromMaster(itemID)
+        for item_id in self._active:
+            try:
+                item = self._items[item_id]
+                item_buffer = item.getSynchronizerBuffer()
+                if len(item_buffer) > 0:
+                    buffer.command(self.SET_ATTRIBUTE)
+                    buffer.itemID(item_id)
+                    buffer.subBuffer(item_buffer)
+            except KeyError:
+                pass
 
-        self._currentRenderingIndex += 1
+        self._firstCreation = False
+
+        return buffer

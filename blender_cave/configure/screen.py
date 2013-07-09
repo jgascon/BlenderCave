@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -42,77 +42,63 @@ class Screen(base.Base):
         self._screen_id    = self._parent.addScreenAndGetItsID(self)
         self._is_master    = (self._screen_id == 0)
 
-        if 'player_options' in attrs:
-            self._player_options = attrs['player_options']
-        else:
-            self._player_options = ''
-
-        if 'player_display' in attrs:
-            self._player_display = attrs['player_display']
-        else:
-            self._player_display = ''
-
         self._corners      = {}
         self._buffers      = {}
         self._set_corner   = False
         self._set_viewport = False
 
     def startElement(self, name, attrs):
-        if not self.getParser().getOnlyScreens():
-            if name == 'graphic_buffer':
-                buffer_name = self.getNodeName(attrs)
-                buffer = {}
-                try:
-                    buffer['user'] = attrs['user']
-                except KeyError:
-                    self.raise_error('Graphic buffer must have a "user" attribut !')
-                try:
-                    eye = attrs['eye']
-                except KeyError:
-                    self.raise_error('Graphic buffer must have a "eye" attribut !')
-                for key, value in {'left': -1.0, 'middle': 0.0, 'right': +1.0}.items():
-                    if eye == key:
-                        buffer['eye'] =  value
-                if not 'eye' in buffer:
-                    self.raise_error('Invalid eye position "' + eye + '" !')
-                self._buffers[buffer_name] =  buffer
-            if (self._set_corner != False) or (self._set_viewport != False):
-                self.raise_error('Cannot include any tag inside corner, viewport or graphic_buffer')
-            if name == 'corner':
-                self._set_corner   = self.getNodeName(attrs)
-            if name == 'viewport':
-                self._set_viewport = True
-        else:
-            if name == 'player':
-                self._player = {}
-                if 'options' in attrs:
-                    self._player['options'] = attrs['options']
-                if 'display' in attrs:
-                    self._player['display'] = attrs['display']
+        if name == 'graphic_buffer':
+            buffer_name = self.getNodeName(attrs)
+            buffer = {}
+            try:
+                buffer['user'] = attrs['user']
+            except KeyError:
+                self.raise_error('Graphic buffer must have a "user" attribut !')
+            try:
+                eye = attrs['eye']
+            except KeyError:
+                self.raise_error('Graphic buffer must have a "eye" attribut !')
+            for key, value in {'left': -1.0, 'middle': 0.0, 'right': +1.0}.items():
+                if eye == key:
+                    buffer['eye'] =  value
+            if not 'eye' in buffer:
+                self.raise_error('Invalid eye position "' + eye + '" !')
+            self._buffers[buffer_name] =  buffer
+        if (self._set_corner != False) or (self._set_viewport != False):
+            self.raise_error('Cannot include any tag inside corner, viewport or graphic_buffer')
+        if name == 'corner':
+            self._set_corner   = self.getNodeName(attrs)
+        if name == 'viewport':
+            self._set_viewport = True
+        if name == 'player':
+            self._player = {}
+            if 'options' in attrs:
+                self._player['options'] = attrs['options']
+            if 'display' in attrs:
+                self._player['display'] = attrs['display']
         return self
 
     def characters(self, string):
-        if not self.getParser().getOnlyScreens():
-            if self._set_corner != False:
-                self._corner = self.getVector(string)
-            if self._set_viewport != False:
-                self._viewport     = []
-                try:
-                    for coordinate in string.split(','):
-                        self._viewport.append(int(coordinate))
-                except ValueError as error:
-                    self.raise_error('Invalid viewport "' + string + '" : ' + str(error))
-                if len(self._viewport) != 4:
-                    self.raise_error('viewport ("' + string + '") must have 4 components')
+        if self._set_corner != False:
+            self._corner = self.getVector(string)
+        if self._set_viewport != False:
+            self._viewport     = []
+            try:
+                for coordinate in string.split(','):
+                    self._viewport.append(int(coordinate))
+            except ValueError as error:
+                self.raise_error('Invalid viewport "' + string + '" : ' + str(error))
+            if len(self._viewport) != 4:
+                self.raise_error('viewport ("' + string + '") must have 4 components')
         
     def endElement(self, name):
-        if not self.getParser().getOnlyScreens():
-            if name == 'corner':
-                self._corners[self._set_corner] = self._corner
-                del(self._corner)
-                self._set_corner = False
-            if name == 'viewport':
-                self._set_viewport = False
+        if name == 'corner':
+            self._corners[self._set_corner] = self._corner
+            del(self._corner)
+            self._set_corner = False
+        if name == 'viewport':
+            self._set_viewport = False
         return super(Screen, self).endElement(name)
 
     def display(self, indent):
@@ -132,33 +118,35 @@ class Screen(base.Base):
         super(Screen, self).display(indent)
 
     def getConfiguration(self):
-        result = {} 
-        if self.getParser().getOnlyScreens():
-            if hasattr(self, '_player'):
-                result = self._player
-            result['master']         = self._is_master
-            return result
+        configuration = { 'focus' : self._focus }
         try:
-            result['viewport'] = self._viewport
+            configuration['player'] = self._player
         except AttributeError:
             pass
-        result['corners'] = {}
+        configuration['master'] = self._is_master
+        try:
+            configuration['viewport'] = self._viewport
+        except AttributeError:
+            pass
+        configuration['corners'] = {}
         not_found = []
         for cornerName in ['topRightCorner', 'topLeftCorner', 'bottomRightCorner']:
             try:
-                result['corners'][cornerName] = self._corners[cornerName]
+                configuration['corners'][cornerName] = self._corners[cornerName]
             except KeyError:
                 not_found.append(cornerName)
         if len(not_found) > 0:
             self.raise_error('Cannot find corners : ' + str(not_found), False)
 
-        result['buffers'] = {}
+        configuration['buffers'] = {}
         for bufferName in ['left', 'alone', 'right']:
             try:
-                result['buffers'][bufferName] = self._buffers[bufferName]
+                configuration['buffers'][bufferName] = self._buffers[bufferName]
             except KeyError:
                 pass
-        if (len(result['buffers']) == 0):
+        if (len(configuration['buffers']) == 0):
             self.raise_error('No graphic buffer available for the current configuration', False)
-            
-        return result
+
+        configuration['id'] = self._screen_id
+
+        return configuration

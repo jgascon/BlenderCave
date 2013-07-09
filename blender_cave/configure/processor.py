@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -39,26 +39,28 @@ class Processor(base.Base):
 
     def __init__(self, parent, attrs):
         super(Processor, self).__init__(parent, attrs, 'processor')
-        self._processorName = self.getBlenderCave().getProcessorModule()._name
+        try:
+            self._processorName = self.getBlenderCave().getProcessorModule()._name
+        except AttributeError:
+            self._processorName = ''
 
     def startElement(self, name, attrs):
         child = None
-        if not self.getParser().getOnlyScreens():
-            if name == 'vrpn':
-                import blender_cave.vrpn.configure
-                self._vrpn = blender_cave.vrpn.configure.VRPN(self, attrs)
-                child = self._vrpn
-            if name == 'osc':
-                import blender_cave.osc.configure
-                self._osc = blender_cave.osc.configure.OSC(self, attrs)
-                child = self._osc
-            if (name == 'specific') and (self._processorName == self.getNodeName(attrs)):
-                try:
-                    self._processor = self.getBlenderCave().getProcessorModule().Configure(self, attrs)
-                except AttributeError:
-                    import blender_cave.processor
-                    self._processor = blender_cave.processor.Configure(self, attrs)
-                child = self._processor
+        if name == 'vrpn':
+            import blender_cave.vrpn.configure
+            self._vrpn = blender_cave.vrpn.configure.VRPN(self, attrs)
+            child = self._vrpn
+        if name == 'osc':
+            import blender_cave.osc.configure
+            self._osc = blender_cave.osc.configure.OSC(self, attrs)
+            child = self._osc
+        if (name == 'specific') and (self._processorName == self.getNodeName(attrs)) and (self._processorName != ''):
+            try:
+                self._processor = self.getBlenderCave().getProcessorModule().Configure(self, attrs)
+            except AttributeError:
+                import blender_cave.processor
+                self._processor = blender_cave.processor.Configure(self, attrs)
+            child = self._processor
         return self.addChild(child)
 
     def display(self, indent):
@@ -66,21 +68,21 @@ class Processor(base.Base):
         super(Processor, self).display(indent)
 
     def getConfiguration(self):
-        localConfiguration = {}
+        configuration = {}
 
         if hasattr(self, '_vrpn'):
-            localConfiguration['vrpn'] = self._vrpn.getConfiguration()
+            configuration['vrpn'] = self._vrpn.getConfiguration()
         else:
-            localConfiguration['vrpn'] = {}
+            configuration['vrpn'] = {}
 
         if hasattr(self, '_osc'):
-            localConfiguration['osc'] = self._osc.getConfiguration()
+            configuration['osc'] = self._osc.getConfiguration()
         else:
-            localConfiguration['osc'] = {}
+            configuration['osc'] = {}
 
         try:
-            localConfiguration['processor'] = self._processor.getConfiguration()
+            configuration['processor'] = self._processor.getConfiguration()
         except AttributeError:
-            localConfiguration['processor'] = {}
+            configuration['processor'] = {}
 
-        return localConfiguration
+        return configuration

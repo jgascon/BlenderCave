@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -75,5 +75,6 @@ class Sender(Base):
 
     def process(self, info):
         info['users'] = self._users
-        info['data'] = self._data
+        info['data']  = self._data
+        info['self']  = self
         getattr(self.getBlenderCave().getProcessor(), self._processor_method)(info)

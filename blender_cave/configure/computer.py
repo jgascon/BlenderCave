@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -53,22 +53,10 @@ class Computer(base.Base):
     def getConfiguration(self):
         if len(self._children['screen']) == 0:
             self.raise_error('No screen defined for this computer', False)
-        if self.getParser().getOnlyScreens():
-            screens = {}
-            for screenName in self._children['screen']:
-                screens[screenName] = self._children['screen'][screenName].getConfiguration()
-            return screens
-        screen = self.getParser().getScreen()
-        if screen is None:
-            if len(self._children['screen']) != 1:
-                self.raise_error('Undefined screen !\nYou must at least define BLENDER_CAVE_CONF_SCREEN environment variable or --config as an argument !', False)
-            screenObject = self._children.dict['screen'].itervalues().next()
-        else:
-            try:
-                screenObject = self._children['screen'][screen]
-            except KeyError:
-                self.raise_error('Cannot find screen "' + screen + '" for this computer', False)
-        return screenObject
+        screens = {}
+        for screenName in self._children['screen']:
+            screens[screenName] = self._children['screen'][screenName].getConfiguration()
+        return screens
 
     def addScreenAndGetItsID(self, screen):
         return self._parent.addScreenAndGetItsID(screen)

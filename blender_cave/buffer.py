@@ -1,5 +1,5 @@
 # -*- coding: iso-8859-1 -*-
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -117,8 +117,8 @@ class Buffer:
                                             data[3][0], data[3][1], data[3][2], data[3][3])
 
     def addPrefix(self, prefix):
-        if isinstance(other, Buffer):
-            self._buffer = other._buffer + self._buffer
+        if isinstance(prefix, Buffer):
+            self._buffer = prefix._buffer + self._buffer
             return self
 
     def _subBytes(self, data = None):

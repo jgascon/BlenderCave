@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -35,12 +35,15 @@
 
 import blender_cave.base
 import blender_cave.exceptions
-import bge
 import socket
-from . import base
-from . import object
-from . import user
-from . import client
+try:
+    from . import base
+    from . import object
+    from . import user
+    from . import objectuser
+    from . import client
+except ImportError:
+    pass
 
 class OSC(blender_cave.base.Base):
     def __init__(self, parent,  configuration):
@@ -67,10 +70,13 @@ class OSC(blender_cave.base.Base):
 
         self._objects = {}
 
-        self._users = []
-        for _user in self.getBlenderCave().getAllUsers():
+        self._users = {}
+        self._userObject = {}
+        for usr in self.getBlenderCave().getAllUsers():
+            id_usr = id(usr)
             try:
-                self._users.append(user.User(self, _user, len(self._users) + 1))
+                self._users[id_usr]      = user.User(self, usr, usr.getID())
+                self._userObject[id_usr] = {}
             except:
                 self.log_traceback(False)
 
@@ -93,13 +99,39 @@ class OSC(blender_cave.base.Base):
             cmd.append('reset')
             self.sendCommand(cmd)        
 
-    def addObject(self, obj, configuration):
+    def getObject(self, obj):
+        id_obj = id(obj)
         try:
-            obj = object.Object(self, obj, configuration)
-            self._objects[obj.getName()] = obj
+            return self._objects[id_obj]
+        except KeyError:
+            self._objects[id_obj] = object.Object(self, obj)
+            return self._objects[id_obj]
         except:
             self.log_traceback(False)
-                 
+
+    def getUser(self, usr):
+        id_usr = id(usr)
+        try:
+            return self._users[id_usr]
+        except:
+            self.log_traceback(False)
+
+    def getObjectUser(self, obj, usr):
+        if (not isinstance(obj, object.Object)) or (not isinstance(usr, user.User)):
+            raise blender_cave.exceptions.OSC_Invalid_Type('getObjectUser waits a user then an object')
+        id_usr = id(usr.getUser())
+        id_obj = id(obj.getObject())
+        try:
+            osc_usr = self._userObject[id_usr]
+            try:
+                return osc_usr[id_obj]
+            except KeyError:
+                osc_usr[id_obj] = objectuser.ObjectUser(self, obj, usr)
+                return osc_usr[id_obj]
+        except:
+            self.log_traceback(False)
+            
+
     def start(self):
         pass
 
@@ -112,10 +144,13 @@ class OSC(blender_cave.base.Base):
         if hasattr(self, '_client'):
             try:
                 self._global.run()
-                for name, object in self._objects.items():
+                for id, object in self._objects.items():
                     object.run()
-                for user in self._users:
-                    user.run()
+                for id, usr in self._users.items():
+                    usr.run()
+                for id, objects in self._userObject.items():
+                    for id, object in objects.items():
+                        object.run()
             except socket.error:
                 self.getBlenderCave().log_traceback(False)
                 self.getLogger().warning('Cannot send command to OSC host => stop OSC !')

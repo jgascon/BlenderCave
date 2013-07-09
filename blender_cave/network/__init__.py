@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -43,51 +43,40 @@ class Network(blender_cave.base.Base):
 
         self._is_master  = config['is_master']
 
-        from . import select
-        self._select  = select.Select(self)
-        
-
         if self._is_master:
-
-            from .controller import master
-            self._controller  = master.Master(self, config)
-
-            from .broadcaster import master
-            self._broadcaster  = master.Master(self, config)
-
+            from .connector    import Master as connector
+            from .synchronizer import Master as synchronizer
         else:
-
-            from .controller import slave
-            self._controller  = slave.Slave(self, config)
-
-            from .broadcaster import slave
-            self._broadcaster  = slave.Slave(self, config)
-
-        self._firstRun = True
+            from .connector    import Slave as connector
+            from .synchronizer import Slave as synchronizer
+ 
+        self._synchronizer = synchronizer(self,config)
+        self._connector    = connector(self,config, self._synchronizer)
 
     def addObjectToSynchronize(self, object, name):
-        self._broadcaster.addObjectToSynchronize(object, name)
+        self._synchronizer.addObjectToSynchronize(object, name)
 
     def isMaster(self):
         return self._is_master
 
     def isReady(self):
-        return self._controller._status == self._controller.STATUS_READY
+        return self._connector.isReady()
 
     def quit(self, reason):
-        self._controller.quit(reason)
+        self._connector.quit(reason)
+
+    def start(self):
+        self._connector.start()
 
     def run(self):
-        if self._firstRun:
-            self._controller.firstRun()
-            self._broadcaster.firstRun()
-            self._firstRun = False
-        self._select.run(False)
-        self._controller.process()
-        if self.isReady():
-            self._broadcaster.run()
+        try:
+            self._connector.run()
+        except SystemExit:
+            pass
+        except:
+            self.getBlenderCave().log_traceback(True)
 
-    def _quitByController(self, reason):
+    def _quitByConnector(self, reason):
         self.getParent()._quitByNetwork(reason)
 
     def _startSimulation(self):
@@ -105,12 +94,3 @@ class Network(blender_cave.base.Base):
         type = buffer.integer()
         proto = buffer.integer()
         return socket.fromfd(fileno, family, type, proto)
-    
-    def _getController(self):
-        return self._controller
-
-    def _getBroadcaster(self):
-        return self._broadcaster
-
-    def _getSelect(self):
-        return self._select

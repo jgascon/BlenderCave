@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -62,10 +62,13 @@ class BlenderCave(base.Base):
         try:
             screenNumber = len(self._screens)
         except AttributeError:
-            screenNumber = 0
-            self._screens = [screen]
+            screenNumber      = 0
+            self._screens     = [screen]
+            self._master_node = screen._parent._name
+            screen._focus     = self._focus_master
         else:
             self._screens.append(screen)
+            screen._focus     = False
         return screenNumber
 
     def startElement(self, name, attrs):
@@ -73,14 +76,13 @@ class BlenderCave(base.Base):
         if name == 'computer':
             from . import computer
             child = computer.Computer(self, attrs)
-        if not self.getParser().getOnlyScreens():
-            if name == 'user':
-                from . import user
-                child = user.User(self, attrs)
-            if name == 'processor':
-                from . import processor
-                self._processor = processor.Processor(self, attrs)
-                child = self._processor
+        if name == 'user':
+            from . import user
+            child = user.User(self, attrs)
+        if name == 'processor':
+            from . import processor
+            self._processor = processor.Processor(self, attrs)
+            child = self._processor
         return self.addChild(child)
 
     def display(self, indent):
@@ -88,46 +90,40 @@ class BlenderCave(base.Base):
         super(BlenderCave, self).display(indent)
 
     def getConfiguration(self):
-        localConfiguration = {}
-        if self.getParser().getOnlyScreens():
-            for computerName in self._children['computer']:
-                localConfiguration[computerName] = self._children['computer'][computerName].getConfiguration()
-            return localConfiguration
-        localConfiguration['users'] = []
+
+        if (self._master_node == '*') and (len(self._children['computer']) > 1):
+            self.raise_error('Cannot determine master node as it is wildcard', False)
+
+        computers = {}
+        for computerName, computer in self._children['computer'].items():
+            computers[computerName] = computer.getConfiguration()
+
+        this_computer_name = socket.gethostname()
+        if ('*' in computers) and (this_computer_name not in computers):
+            computers[this_computer_name] = computers['*']
+            del(computers['*'])
+
+        if self._master_node == '*':
+            # Here, we are sure that there is only one computer !
+            self._master_node = 'localhost'
+
         try:
-            for userName in self._children['user']:
-                localConfiguration['users'].append(self._children['user'][userName].getConfiguration())
+            users = []
+            for userName, user in self._children['user'].items():
+                users.append(user.getConfiguration())
         except KeyError:
             self.raise_error('No user available in the Virtual Environment', False)
 
         try:
-            for computerName in self._children['computer']:
-                if computerName == socket.gethostname():
-                    this_computer = self._children['computer'][computerName]
-                    break
-                if computerName == '*':
-                    this_computer =  self._children['computer'][computerName]
-            screen = this_computer.getConfiguration()
-            localConfiguration['screen'] = screen.getConfiguration()
-            localConfiguration['screen']['focus_master'] = self._focus_master
-        except (KeyError, UnboundLocalError):
-            self.raise_error('This computer is not defined in the configuration file', False)
+            configuration = self._processor.getConfiguration()
+        except AttributeError:
+            configuration = {}
 
-        for screenIndex in range(len(self._screens)):
-            if self._screens[screenIndex]._is_master:
-                master_node = self._screens[screenIndex]._parent._name
+        configuration['users']      = users
+        configuration['computers']  = computers
+        configuration['connection'] = {'port'           : self._synchroPort,
+                                       'address'        : self._synchroAddress,
+                                       'number_screens' : len(self._screens),
+                                       'master_node'    : self._master_node}
 
-        if master_node == '*':
-            master_node = 'localhost'
-
-        localConfiguration['connection'] = {'port'           : self._synchroPort,
-                                            'address'        : self._synchroAddress,
-                                            'number_screens' : len(self._screens),
-                                            'is_master'      : screen._is_master,
-                                            'screen_id'      : screen._screen_id,
-                                            'master_node'    : master_node}
-
-        if hasattr(self, '_processor'):
-            localConfiguration.update(self._processor.getConfiguration())
-
-        return localConfiguration
+        return configuration

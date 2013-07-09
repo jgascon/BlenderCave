@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -39,7 +39,7 @@ import mathutils
 import blender_cave.exceptions
 
 class Object(base.Base):
-    def __init__(self, parent, obj, configuration):
+    def __init__(self, parent, obj):
         super(Object, self).__init__(parent, 'object', len(parent._objects) + 1)
         if isinstance(obj, str):
             self._object = bge.logic.getCurrentScene().objects[obj]
@@ -47,25 +47,29 @@ class Object(base.Base):
             self._object = obj
         else:
             raise blender_cave.exceptions.OSC_Invalid_Object(str(obj))
-        if 'BlenderCave_OSC' in self._object:
+        if id(self._object) in self.getParent()._objects:
             raise blender_cave.exceptions.OSC_Invalid_Already_Created(str(obj))
-        self._configuration = configuration
         self._commands['sound']    = { 'type'  : 'string'}
         self._commands['position'] = { 'type'  : 'matrix'}
         self._commands['loop']     = { 'type'  : 'state'}
         self._commands_order       = ['sound', 'loop', 'volume', 'start', 'position', 'mute']
         self.define_commands()
 
-        if 'sound' in configuration:
-            self.sound(configuration['sound'])
-        self._object['BlenderCave_OSC'] = self
-
     def run(self):
         camera = bge.logic.getCurrentScene().active_camera
-        camera_position = camera.worldOrientation.to_4x4() * mathutils.Matrix.Translation(camera.worldPosition)
-        object_position = self._object.worldOrientation.to_4x4() * mathutils.Matrix.Translation(self._object.worldPosition)
+        camera_position       = camera.worldOrientation.to_4x4()
+        camera_position[0][3] = camera.worldPosition[0]
+        camera_position[1][3] = camera.worldPosition[1]
+        camera_position[2][3] = camera.worldPosition[2]
+        object_position       = self._object.worldOrientation.to_4x4()
+        object_position[0][3] = self._object.worldPosition[0]
+        object_position[1][3] = self._object.worldPosition[1]
+        object_position[2][3] = self._object.worldPosition[2]
         self.position(camera_position.inverted() * object_position)
         super(Object, self).run()
 
     def getName(self):
         return self._object.name
+
+    def getObject(self):
+        return self._object

@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -36,14 +36,15 @@
 from . import base
 import bge
 import mathutils
+import math
 
 class User(base.Base):
     def __init__(self, parent, _user, id):
         super(User, self).__init__(parent, 'user', id)
         self._user = _user
-        self._commands['position'] = { 'type'  : 'matrix',
-                                       'cmd'   : 'position'}
-        self._commands['hrtf'] = { 'type': 'vol' }
+        self._commands['name']     = { 'type'  : 'string'}
+        self._commands['position'] = { 'type'  : 'matrix'}
+        self._commands['hrtf']     = { 'type': 'int' }
         attributs = ['warmth', 'brightness', 'presence',
                      'reverb_volume', 'running_reverb',
                      'late_reverb', 'envelop', 'heavyness',
@@ -51,10 +52,14 @@ class User(base.Base):
         for attribut in attributs:
             self._commands[attribut] = { 'type': 'int'}
 
-        self._commands_order         = ['hrtf','volume', 'position', 'start', 'mute']
+        self._commands_order         = ['name', 'hrtf', 'volume', 'position', 'start', 'mute'] + attributs
         self.define_commands()
         self._user.BlenderCave_OSC = self
+        self.name(self._user.getName())
 
     def run(self):
         self.position(self._user.getPosition() * self._user.getVehiclePosition())
         super(User, self).run()
+
+    def getUser(self):
+        return self._user

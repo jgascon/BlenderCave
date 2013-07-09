@@ -1,5 +1,5 @@
 # -*- coding: iso-8859-1 -*-
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -120,7 +120,7 @@ class Screen(blender_cave.base.Base):
         scene = bge.logic.getCurrentScene()
         scene.frame_type="scale"
 
-        self._focus = configuration['focus_master'] and self.getBlenderCave().isMaster()
+        self._focus = configuration['focus']
         if self._focus:
             self.getLogger().info('Focus forced on this screen')
 

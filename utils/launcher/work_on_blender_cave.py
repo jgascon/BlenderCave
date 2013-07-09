@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -39,9 +39,10 @@ import py_compile
 import compileall
 
 class WorkOnBlenderCave:
-    def __init__(self, blender_cave_path, config_file):
+    def __init__(self, blender_cave_path, config_file, config_path):
         self._blender_cave_path = blender_cave_path
         self._config_file       = config_file
+        self._config_path       = config_path
 
         sys.path.append(self._blender_cave_path)
 
@@ -52,6 +53,7 @@ class WorkOnBlenderCave:
         from blender_cave import environment
         self._environment = environment.Environment(None)
         self._environment.setEnvironment('config_file', self._config_file)
+        self._environment.setEnvironment('config_path', self._config_path)
         self._environment.processRemainingConfiguration()
 
         import fake_blender_cave
@@ -59,12 +61,8 @@ class WorkOnBlenderCave:
         Fake = fake_blender_cave.FakeBlenderCave(self._environment)
 
         from blender_cave import configure 
-        configurator  = configure.Configure(Fake, self._environment, True)
-        configuration = configurator.getConfiguration()
-
-        if '*' in configuration:
-            configuration['localhost'] = configuration['*']
-            del(configuration['*'])
+        configurator  = configure.Configure(Fake, self._environment)
+        configuration = configurator.getGlobalConfiguration()
 
         return configuration
 

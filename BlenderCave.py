@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.2
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -36,43 +36,48 @@
 
 import os
 import sys
-import copy
-import subprocess
-import tempfile
 import time
-
-if (sys.argv[1] == 'version'):
-    print('BlenderCave version 2.4')
-    sys.exit()
+import socket
 
 arguments = {}
 
-if 'BLENDER_CAVE_GLOBAL_CONFIGURATION' in os.environ:
-    conf_file = os.environ['BLENDER_CAVE_GLOBAL_CONFIGURATION']
-else:
-    conf_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'conf.py')
-try:
-    exec(open(conf_file).read())
-except IOError:
+if 'BLENDER_CAVE_GLOBAL_CONFIGURATION' not in os.environ:
     print('Invalid global BlenderCave configuration file: you should define BLENDER_CAVE_GLOBAL_CONFIGURATION environment variable to point to the correct conf.py file')
     sys.exit()
 
+exec(open(os.environ['BLENDER_CAVE_GLOBAL_CONFIGURATION']).read())
+
+if len(sys.argv) < 2:
+    print("Usage:", sys.argv[0], "[start|startalone|stop|stopalone] file.blend")
+    sys.exit()
+
 if sys.argv[1] == 'stop' or sys.argv[1] == 'start':
-    arguments['config-file'] = os.path.join(config_path, all_config_file)
+    arguments['config-file'] = all_config_file
     arguments['background'] = True
 else:
-    arguments['config-file'] = os.path.join(config_path, alone_config_file)
+    arguments['config-file'] = alone_config_file
     arguments['background'] = False
 
-import sys
+if (sys.argv[1] == 'version'):
+    exec(open(os.path.join(blender_cave_path, 'blender_cave', 'version.py')).read())
+    print('BlenderCave version: ', version)
+    sys.exit()
+
 sys.path.append(os.path.join(blender_cave_path, 'utils', 'launcher'))
 
 import work_on_blender_cave
-controller = work_on_blender_cave.WorkOnBlenderCave(blender_cave_path, arguments['config-file'])
+controller = work_on_blender_cave.WorkOnBlenderCave(blender_cave_path, arguments['config-file'], arguments['config-path'])
 
 controller.compileBlenderCave()
 
-computers = controller.getConfiguration()
+configuration = controller.getConfiguration()
+computers = configuration['computers']
+
+if False:
+    import pprint
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(computers)
+    sys.exit()
 
 def quoteString(string):
     if ' ' in string:
@@ -111,6 +116,7 @@ def createCommand(arguments):
                      {'key' : 'options',           'prefix' : '--options'           },
                      {'key' : 'blender-file',      'prefix' : '--blender-file'      },
                      {'key' : 'config-file',       'prefix' : '--config-file'       },
+                     {'key' : 'config-path',       'prefix' : '--config-path'       },
                      {'key' : 'log-path',          'prefix' : '--log-path'          },
                      {'key' : 'verbosity',         'prefix' : '--verbosity'         },
                      {'key' : 'display',           'prefix' : '--display'           },
@@ -127,7 +133,7 @@ def createCommand(arguments):
     return ' '.join(command)
 
 def runCommand(computer, command):
-    if computer != 'localhost':
+    if computer != 'localhost' and computer != socket.gethostname():
         command = command.replace('"', '\\"')
         if sys.platform == "win32":
             user     = windows_logins[computer]['user']
@@ -135,6 +141,7 @@ def runCommand(computer, command):
             command  = 'start psexec \\' + '\\' + computer + ' -u ' + user + ' -p ' + password + ' -i ' + command
         else:
             command = 'ssh ' + computer + ' "' + command + '"'
+    #print('run : ', command)
     os.system(command)
 
 class InvalidCall(Exception):
@@ -164,11 +171,12 @@ try:
         instances[computer] = []
         for screen, attributs in screens.items():
             screen_arguments                = arguments
-            screen_arguments['screen']      = screen 
-            if 'display' in attributs:
-                screen_arguments['display'] = attributs['display']
-            if 'options' in attributs:
-                screen_arguments['options'] = quoteString(attributs['options'])
+            screen_arguments['screen']      = screen
+            if 'player' in attributs:
+                if 'display' in attributs['player']:
+                    screen_arguments['display'] = attributs['player']['display']
+                if 'options' in attributs['player']:
+                    screen_arguments['options'] = quoteString(attributs['player']['options'])
             command = createCommand(screen_arguments)
             
             if attributs['master']:

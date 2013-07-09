@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -46,13 +46,18 @@ class Configure(blender_cave.processor.Configure):
     def __init__(self, parent, attrs):
         super(Configure, self).__init__(parent, attrs, 'Mountain')
 
+# Hemi, Monkey.001, Monkey, Sun, Cube.001, 01_Player_box, Empty, Cam_1, Point, Cam_3, 02_Spinnen Armature, Cube.002, Cam_2, Cube, Spot
+
 class Processor(blender_cave.processor.Processor):
     def __init__(self, parent, configuration):
         super(Processor, self).__init__(parent, configuration)
-        self._scene = bge.logic.getCurrentScene()
-        self._navigator = hc_nav.HCNav(parent)
         self._quit = 0
         self._controller = bge.logic.getCurrentController()
+
+        if (self.getBlenderCave().getVersion() >= 3.0) and (self.getBlenderCave().isMaster()):
+            self.getBlenderCave().getSceneSynchronizer().getItem(bge.logic).activate(True, True)
+            self._navigator = hc_nav.HCNav(parent)
+            self._navigator.setPositionFactors(1, 20.0, 1.0)
 
     def user_position(self, info):
         super(Processor, self).user_position(info)
@@ -104,35 +109,6 @@ class Processor(blender_cave.processor.Processor):
         if (info['button'] == 23) and (info['state'] == 1):
             self._controller.activate(self._controller.actuators['Jump'])
 
-    def buttons(self, info):
-        return
-        actuator = None
-        if info['button'] == 0:
-            self._controller.deactivate(self._controller.actuators['act_vor_Laufen'])
-            self._controller.deactivate(self._controller.actuators['vor_renn'])
-            self._controller.deactivate(self._controller.actuators['act_back_Laufen'])
-            self._controller.deactivate(self._controller.actuators['Back_renn'])
-        if info['button'] == 1:
-            actuator = self._controller.actuators['act_Attack']
-
-        if actuator == None:
-            return
-
-        if info['state'] == 1:
-            self._controller.activate(actuator)
-        else:
-            self._controller.deactivate(actuator)
-
-    def movements(self, info):
-        return
-        if info['channel'][1] > 0:
-            self._controller.activate(self._controller.actuators['act_vor_Laufen'])
-            self._controller.activate(self._controller.actuators['vor_renn'])
-        if info['channel'][1] < 0:
-            pass
-            #self._controller.activate(self._controller.actuators['act_back_Laufen'])
-            #self._controller.activate(self._controller.actuators['Back_renn'])
-
     def texts(self, info):
         cmd = None
         if info['message'] == 'COMPUTER CALIBRATION':
@@ -147,3 +123,10 @@ class Processor(blender_cave.processor.Processor):
         if cmd is not None:
             for user in info['users']:
                 self._navigator.update(cmd, user)
+
+    def console(self, information):
+        try:
+            if information['key'] == 113:
+                self.getBlenderCave().quit("pressed 'q' key")
+        except KeyError:
+            pass

@@ -1,9 +1,6 @@
 # PATH to blender_cave directory
 blender_cave_path        = 
 
-# PATH to the local configuration files
-config_path              = 
-
 # Which configuration file to load when running in full Virtual Environment ?
 all_config_file          = 
 
@@ -11,10 +8,13 @@ all_config_file          =
 alone_config_file        = 
 
 # Path for temporary files
-temp_path                =
+temp_path                = 
 
 # The path of blenderplayer executable file : under Mac OS X, you should have to set this variable to the path of blenderplayer binary file
 # blenderplayer_path       = ??
+
+# PATH to the local configuration files
+arguments['config-path']    = 
 
 # Level of verbosity : debug, info, warning, error, critical
 arguments['verbosity']      = 'warning'

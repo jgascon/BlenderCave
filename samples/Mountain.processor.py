@@ -1,4 +1,4 @@
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -49,22 +49,34 @@ class Configure(blender_cave.processor.Configure):
 class Processor(blender_cave.processor.Processor):
     def __init__(self, parent, configuration):
         super(Processor, self).__init__(parent, configuration)
-        self._scene = bge.logic.getCurrentScene()
         #self._navigator = hc_nav.HCNav(parent, self.process_hcnav)
         self._navigator = hc_nav.HCNav(parent)
         self._navigator.setPositionFactors(1, 20.0, 1.0)
 
-        # Sample of how to add sound to the "Plane.011" object
-        myPlane = bge.logic.getCurrentScene().objects['Plane.011']
-        self.getBlenderCave().getOSC().addObject(myPlane, {'sound'    : 'trumpet.wav'})
-        myPlane['BlenderCave_OSC'].mute(self.getBlenderCave().getOSC().stateToggle)
-        myPlane['BlenderCave_OSC'].volume('%50')
+        if (self.getBlenderCave().getVersion() >= 3.0) and (self.getBlenderCave().isMaster()):
+            self.getBlenderCave().getSceneSynchronizer().getItem(bge.logic).activate(True, True)
+
+            OSC = self.getBlenderCave().getOSC()
+
+            # Sample of how to add sound to the "Plane.011" object
+            plane = bge.logic.getCurrentScene().objects['Plane.011']
+            user = self.getBlenderCave().getUserByName('user A')
+
+            osc_plane = OSC.getObject(plane)
+            osc_plane.sound('trumpet.wav')
+            osc_plane.mute(OSC.stateToggle)
+            osc_plane.volume('%50')
+
+            osc_plane = OSC.getObject(plane)
+
+            osc_user = OSC.getUser(user)
+
+            osc_user_objet = OSC.getObjectUser(osc_plane, osc_user)
+            osc_user_objet.mute(True)
+
 
     def process_hcnav(self, matrix):
         print(matrix)
-
-    def start(self):
-        return
 
     def user_position(self, info):
         super(Processor, self).user_position(info)

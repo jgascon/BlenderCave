@@ -1,5 +1,5 @@
 # -*- coding: iso-8859-1 -*-
-## Copyright © LIMSI-CNRS (2011)
+## Copyright © LIMSI-CNRS (2013)
 ##
 ## contributor(s) : Jorge Gascon, Damien Touraine, David Poirier-Quinot,
 ## Laurent Pointal, Julian Adenauer, 
@@ -89,19 +89,20 @@ class Environment(blender_cave.base.Base):
         if len(parsing_errors) > 0:
             self._environment.logger.info(parser.get_usage())
 
+    def _setConfigurationPath(self, config_paths):
+        for config_path in config_paths.split(':'):
+            if stat.S_ISDIR(os.stat(config_path).st_mode):
+                self._conf_paths.append(config_path)
+            else:
+                self.getLogger().warning(config_path + ' is not a valid path for configuration files.')
+
     def processRemainingConfiguration(self):
 
         self._conf_paths = []
         if self._environment.config_path is not None:
-            if stat.S_ISDIR(os.stat(self._environment.config_path).st_mode):
-                self._conf_paths.append(self._environment.config_path)
-            else:
-                self.getLogger().warning(self._environment.config_path + ' BLENDER_CAVE_CONF_PATH environment variable is not a valid path.')
+            self._setConfigurationPath(self._environment.config_path)
         if 'BLENDER_CAVE_CONF_PATH' in os.environ:
-            if stat.S_ISDIR(os.stat(os.environ['BLENDER_CAVE_CONF_PATH']).st_mode):
-                self._conf_paths.append(os.environ['BLENDER_CAVE_CONF_PATH'])
-            else:
-                self.getLogger().warning(os.environ['BLENDER_CAVE_CONF_PATH'] + ' BLENDER_CAVE_CONF_PATH environment variable is not a valid path.')
+            self._setConfigurationPath(os.environ['BLENDER_CAVE_CONF_PATH'])
         self._conf_paths.append(os.getcwd())
 
         self._environment.config_file = self.checkConfigurationFile(self._environment.config_file, True)
